@@ -82,6 +82,7 @@ export default function App() {
             }
           />
           <Route path="/home" element={<Navigate to="/" replace />} />
+          <Route path="/test" element={<div className="p-8 text-center"><h1 className="text-2xl font-bold">Test Route Working!</h1><p>If you can see this, routing is working.</p></div>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AppShell>

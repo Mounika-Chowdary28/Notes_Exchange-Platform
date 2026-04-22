@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { Upload, FileText, BookOpen, Tag, Calendar, Award, Settings, CheckCircle, AlertCircle, X, Zap, Star, Target, Clock, User } from 'lucide-react'
 import { FileDropzone } from '../components/FileDropzone'
 import { BRANCHES, NOTE_TYPES, SEMESTERS } from '../data/mockData'
 import { useAuth } from '../context/AuthContext'
@@ -147,177 +149,417 @@ export function UploadNote() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
-      <div>
-        <h1 className="font-display text-3xl font-bold text-slate-50 sm:text-4xl">Upload notes</h1>
-        <p className="mt-2 text-muted">Multi-file queue, duplicate hints, DOCX/PDF/image, rich metadata, OCR flag.</p>
-      </div>
+    <div className="space-y-12">
+      <motion.div
+        initial={{ opacity: 0, y: -30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="text-center"
+      >
+        <div className="inline-flex items-center gap-3 rounded-3xl bg-gradient-to-r from-emerald-500 to-cyan-500 p-6 mb-6 shadow-2xl">
+          <Upload className="h-12 w-12 text-white" />
+          <h1 className="font-display text-3xl font-bold text-white">Upload Notes</h1>
+          <Zap className="h-8 w-8 text-yellow-300 animate-pulse" />
+        </div>
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          📤 Multi-file queue, duplicate hints, DOCX/PDF/image, rich metadata, OCR flag
+        </p>
+      </motion.div>
 
-      <form onSubmit={runUpload} className="glass space-y-8 rounded-3xl border border-slate-600/25 p-6 sm:p-8">
-        <FileDropzone
-          file={queue[queue.length - 1] || null}
-          onFileChange={onFiles}
-          error=""
-        />
+      <motion.form 
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.6 }}
+        onSubmit={runUpload} 
+        className="glass-enhanced mx-auto max-w-4xl space-y-8 rounded-3xl border border-purple-500/20 p-8"
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3 }}
+        >
+          <FileDropzone
+            file={queue[queue.length - 1] || null}
+            onFileChange={onFiles}
+            error=""
+          />
+        </motion.div>
+        
         {queue.length ? (
-          <ul className="space-y-2 rounded-xl border border-slate-600/30 bg-surface-0/50 p-3 text-sm">
-            {queue.map((f, i) => (
-              <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2">
-                <span className="truncate font-mono text-xs text-accent-2">{f.name}</span>
-                <button type="button" onClick={() => removeAt(i)} className="text-xs text-warm hover:underline">
-                  Remove
-                </button>
-                {progress[`${i}-${f.name}`] != null ? (
-                  <span className="text-[10px] text-muted">{progress[`${i}-${f.name}`]}%</span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="glass-enhanced rounded-2xl border border-blue-500/20 p-6"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 p-2">
+                <FileText className="h-5 w-5 text-white" />
+              </div>
+              <h3 className="font-display text-lg font-bold text-gray-900">Upload Queue</h3>
+              <div className="rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500 px-3 py-1 text-xs font-bold text-white">
+                {queue.length} Files
+              </div>
+            </div>
+            <ul className="space-y-3">
+              {queue.map((f, i) => (
+                <motion.li 
+                  key={`${f.name}-${i}`} 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 + i * 0.1 }}
+                  className="flex items-center justify-between gap-3 p-3 rounded-xl bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 hover:border-blue-300 transition-all"
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="inline-flex items-center justify-center rounded-lg bg-white p-2">
+                      <FileText className="h-4 w-4 text-blue-500" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="font-mono text-sm font-medium text-gray-800">{f.name}</span>
+                      <div className="text-xs text-gray-500">
+                        📁 {(f.size / 1024 / 1024).toFixed(2)} MB
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {progress[`${i}-${f.name}`] != null ? (
+                      <div className="inline-flex items-center gap-2 rounded-lg bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+                        <CheckCircle className="h-3 w-3" />
+                        {progress[`${i}-${f.name}`]}%
+                      </div>
+                    ) : (
+                      <motion.button
+                        type="button" 
+                        onClick={() => removeAt(i)} 
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="inline-flex items-center gap-1 rounded-lg bg-red-100 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-200 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                        Remove
+                      </motion.button>
+                    )}
+                  </div>
+                </motion.li>
+              ))}
+            </ul>
+          </motion.div>
         ) : null}
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className="text-sm font-medium text-gray-700">Title</label>
-            <input
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="grid gap-6 sm:grid-cols-2"
+        >
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.6 }}
+            className="sm:col-span-2"
+          >
+            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+              <FileText className="h-4 w-4 text-purple-500" />
+              Title
+            </label>
+            <motion.input
+              whileFocus={{ scale: 1.02 }}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="focus-ring mt-1.5 w-full rounded-xl border border-gray-300 bg-white/95 px-4 py-3 text-gray-900"
-              placeholder="e.g. DBMS Unit 3 — Transactions"
+              className="focus-ring w-full rounded-2xl border-2 border-purple-200 bg-white/95 px-4 py-3 text-sm font-medium text-gray-900 transition-all hover:border-purple-300 focus:border-purple-500"
+              placeholder="📝 e.g. DBMS Unit 3 — Transactions"
             />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Subject name</label>
-            <input
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.7 }}
+          >
+            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+              <BookOpen className="h-4 w-4 text-purple-500" />
+              Subject Name
+            </label>
+            <motion.input
+              whileFocus={{ scale: 1.02 }}
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="focus-ring mt-1.5 w-full rounded-xl border border-gray-300 bg-white/95 px-4 py-3 text-gray-900"
+              className="focus-ring w-full rounded-2xl border-2 border-purple-200 bg-white/95 px-4 py-3 text-sm font-medium text-gray-900 transition-all hover:border-purple-300 focus:border-purple-500"
+              placeholder="📚 Database Management Systems"
             />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Subject code</label>
-            <input
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.8 }}
+          >
+            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+              <Tag className="h-4 w-4 text-purple-500" />
+              Subject Code
+            </label>
+            <motion.input
+              whileFocus={{ scale: 1.02 }}
               value={subjectCode}
               onChange={(e) => setSubjectCode(e.target.value.toUpperCase())}
-              className="focus-ring mt-1.5 w-full rounded-xl border border-gray-300 bg-white/95 px-4 py-3 font-mono text-gray-900"
+              className="focus-ring w-full rounded-2xl border-2 border-purple-200 bg-white/95 px-4 py-3 font-mono text-sm font-medium text-gray-900 transition-all hover:border-purple-300 focus:border-purple-500"
+              placeholder="🏷️ CS302"
             />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Unit / topic</label>
-            <input
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.9 }}
+          >
+            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+              <Calendar className="h-4 w-4 text-purple-500" />
+              Unit / Topic
+            </label>
+            <motion.input
+              whileFocus={{ scale: 1.02 }}
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
-              className="focus-ring mt-1.5 w-full rounded-xl border border-gray-300 bg-white/95 px-4 py-3 text-gray-900"
+              className="focus-ring w-full rounded-2xl border-2 border-purple-200 bg-white/95 px-4 py-3 text-sm font-medium text-gray-900 transition-all hover:border-purple-300 focus:border-purple-500"
+              placeholder="📁 Unit 3"
             />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Semester</label>
-            <select
+          </motion.div>
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 1.0 }}
+          >
+            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+              <Calendar className="h-4 w-4 text-purple-500" />
+              Semester
+            </label>
+            <motion.select
+              whileFocus={{ scale: 1.02 }}
               value={semester}
               onChange={(e) => setSemester(e.target.value)}
-              className="focus-ring mt-1.5 w-full rounded-xl border border-gray-300 bg-white/95 px-4 py-3 text-sm text-gray-900"
+              className="focus-ring w-full rounded-2xl border-2 border-purple-200 bg-white/95 px-4 py-3 text-sm font-medium text-gray-900 transition-all hover:border-purple-300 focus:border-purple-500"
             >
               {SEMESTERS.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  📅 Semester {s}
                 </option>
               ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Branch</label>
-            <select
+            </motion.select>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 1.1 }}
+          >
+            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+              <BookOpen className="h-4 w-4 text-purple-500" />
+              Branch
+            </label>
+            <motion.select
+              whileFocus={{ scale: 1.02 }}
               value={branch}
               onChange={(e) => setBranch(e.target.value)}
-              className="focus-ring mt-1.5 w-full rounded-xl border border-gray-300 bg-white/95 px-4 py-3 text-sm text-gray-900"
+              className="focus-ring w-full rounded-2xl border-2 border-purple-200 bg-white/95 px-4 py-3 text-sm font-medium text-gray-900 transition-all hover:border-purple-300 focus:border-purple-500"
             >
               {BRANCHES.map((b) => (
                 <option key={b} value={b}>
-                  {b}
+                  🎓 {b}
                 </option>
               ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Category</label>
-            <select
+            </motion.select>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 1.2 }}
+          >
+            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+              <Award className="h-4 w-4 text-purple-500" />
+              Category
+            </label>
+            <motion.select
+              whileFocus={{ scale: 1.02 }}
               value={noteType}
               onChange={(e) => setNoteType(e.target.value)}
-              className="focus-ring mt-1.5 w-full rounded-xl border border-slate-600/40 bg-surface-0/90 px-4 py-3 text-sm"
+              className="focus-ring w-full rounded-2xl border-2 border-purple-200 bg-white/95 px-4 py-3 text-sm font-medium text-gray-900 transition-all hover:border-purple-300 focus:border-purple-500"
             >
               {Object.entries(NOTE_TYPES).map(([k, v]) => (
                 <option key={k} value={k}>
-                  {v}
+                  📋 {v}
                 </option>
               ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Difficulty</label>
-            <select
+            </motion.select>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 1.3 }}
+          >
+            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+              <Target className="h-4 w-4 text-purple-500" />
+              Difficulty
+            </label>
+            <motion.select
+              whileFocus={{ scale: 1.02 }}
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value)}
-              className="focus-ring mt-1.5 w-full rounded-xl border border-slate-600/40 bg-surface-0/90 px-4 py-3 text-sm"
+              className="focus-ring w-full rounded-2xl border-2 border-purple-200 bg-white/95 px-4 py-3 text-sm font-medium text-gray-900 transition-all hover:border-purple-300 focus:border-purple-500"
             >
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="advanced">Advanced</option>
-            </select>
-          </div>
-          <div className="sm:col-span-2">
-            <label className="text-sm font-medium text-gray-700">Tags (comma separated)</label>
-            <input
+              <option value="easy">😊 Easy</option>
+              <option value="medium">🎯 Medium</option>
+              <option value="advanced">🚀 Advanced</option>
+            </motion.select>
+          </motion.div>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.4 }}
+            className="sm:col-span-2"
+          >
+            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+              <Tag className="h-4 w-4 text-purple-500" />
+              Tags (comma separated)
+            </label>
+            <motion.textarea
+              whileFocus={{ scale: 1.02 }}
               value={tags}
               onChange={(e) => setTags(e.target.value)}
-              className="focus-ring mt-1.5 w-full rounded-xl border border-gray-300 bg-white/95 px-4 py-3 text-gray-900"
-              placeholder="pyq, revision, sql"
+              className="focus-ring w-full rounded-2xl border-2 border-purple-200 bg-white/95 px-4 py-3 text-sm font-medium text-gray-900 transition-all hover:border-purple-300 focus:border-purple-500"
+              rows={2}
+              placeholder="🏷️ pyq, revision, sql, algorithms"
             />
-          </div>
-          <div className="sm:col-span-2 flex flex-wrap gap-4 text-sm text-gray-700">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={examFocused} onChange={(e) => setExamFocused(e.target.checked)} />
-              Exam-focused
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.5 }}
+            className="sm:col-span-2"
+          >
+            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-4">
+              <Settings className="h-4 w-4 text-purple-500" />
+              Additional Options
             </label>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={importantExam} onChange={(e) => setImportantExam(e.target.checked)} />
-              Important for exams
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <motion.label 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 1.6 }}
+                whileHover={{ scale: 1.05 }}
+                className="flex items-center gap-2 cursor-pointer rounded-xl bg-gradient-to-r from-blue-50 to-purple-50 p-3 border border-blue-200 hover:border-blue-300 transition-all"
+              >
+                <input type="checkbox" checked={examFocused} onChange={(e) => setExamFocused(e.target.checked)} className="rounded border-blue-300" />
+                <div>
+                  <div className="text-sm font-medium text-gray-800">🎯 Exam Focused</div>
+                  <div className="text-xs text-gray-600">Important for exams</div>
+                </div>
+              </motion.label>
+              
+              <motion.label 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 1.7 }}
+                whileHover={{ scale: 1.05 }}
+                className="flex items-center gap-2 cursor-pointer rounded-xl bg-gradient-to-r from-orange-50 to-red-50 p-3 border border-orange-200 hover:border-orange-300 transition-all"
+              >
+                <input type="checkbox" checked={importantExam} onChange={(e) => setImportantExam(e.target.checked)} className="rounded border-orange-300" />
+                <div>
+                  <div className="text-sm font-medium text-gray-800">⭐ Important Exam</div>
+                  <div className="text-xs text-gray-600">High priority material</div>
+                </div>
+              </motion.label>
+              
+              <motion.label 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 1.8 }}
+                whileHover={{ scale: 1.05 }}
+                className="flex items-center gap-2 cursor-pointer rounded-xl bg-gradient-to-r from-green-50 to-teal-50 p-3 border border-green-200 hover:border-green-300 transition-all"
+              >
+                <input type="checkbox" checked={labViva} onChange={(e) => setLabViva(e.target.checked)} className="rounded border-green-300" />
+                <div>
+                  <div className="text-sm font-medium text-gray-800">🔬 Lab / Viva</div>
+                  <div className="text-xs text-gray-600">Practical content</div>
+                </div>
+              </motion.label>
+              
+              <motion.label 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 1.9 }}
+                whileHover={{ scale: 1.05 }}
+                className="flex items-center gap-2 cursor-pointer rounded-xl bg-gradient-to-r from-cyan-50 to-blue-50 p-3 border border-cyan-200 hover:border-cyan-300 transition-all"
+              >
+                <input type="checkbox" checked={handwritten} onChange={(e) => setHandwritten(e.target.checked)} className="rounded border-cyan-300" />
+                <div>
+                  <div className="text-sm font-medium text-gray-800">✍️ Handwritten</div>
+                  <div className="text-xs text-gray-600">Scan or handwritten</div>
+                </div>
+              </motion.label>
+            </div>
+          </motion.div>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 2.0 }}
+            className="sm:col-span-2"
+          >
+            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+              <FileText className="h-4 w-4 text-purple-500" />
+              Description
             </label>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={labViva} onChange={(e) => setLabViva(e.target.checked)} />
-              Lab / viva prep
-            </label>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={handwritten} onChange={(e) => setHandwritten(e.target.checked)} />
-              Handwritten scan
-            </label>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={ocrIndexed} onChange={(e) => setOcrIndexed(e.target.checked)} />
-              OCR indexed (demo flag)
-            </label>
-          </div>
-          <div className="sm:col-span-2">
-            <label className="text-sm font-medium text-gray-700">Description</label>
-            <textarea
-              rows={3}
+            <motion.textarea
+              whileFocus={{ scale: 1.02 }}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="focus-ring mt-1.5 w-full rounded-xl border border-gray-300 bg-white/95 px-4 py-3 text-gray-900"
+              className="focus-ring w-full rounded-2xl border-2 border-purple-200 bg-white/95 px-4 py-3 text-sm font-medium text-gray-900 transition-all hover:border-purple-300 focus:border-purple-500"
+              rows={4}
+              placeholder="📝 Describe your notes, topics covered, and any special features..."
             />
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-600/20 pt-6">
-          <Link to="/browse" className="text-sm text-muted hover:text-accent">
-            Cancel
-          </Link>
-          <button
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 2.1 }}
+          className="flex flex-wrap items-center justify-between gap-4 border-t border-purple-200 pt-8"
+        >
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Link 
+              to="/browse" 
+              className="inline-flex items-center gap-2 rounded-2xl border-2 border-gray-300 bg-white px-6 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all"
+            >
+              <X className="h-4 w-4" />
+              Cancel
+            </Link>
+          </motion.div>
+          
+          <motion.button
             type="submit"
             disabled={submitting}
-            className="focus-ring rounded-2xl bg-accent px-8 py-3 text-sm font-bold text-white disabled:opacity-50"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="group inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Uploading…' : 'Publish queue'}
-          </button>
-        </div>
-      </form>
+            {submitting ? (
+              <>
+                <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Uploading...</span>
+              </>
+            ) : (
+              <>
+                <Upload className="h-5 w-5" />
+                <span>Publish Queue</span>
+                <Zap className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </>
+            )}
+          </motion.button>
+        </motion.div>
+      </motion.form>
     </div>
   )
 }

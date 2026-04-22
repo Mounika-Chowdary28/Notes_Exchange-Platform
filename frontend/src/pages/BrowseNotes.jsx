@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { Search, Filter, BookOpen, FileText, Star, TrendingUp, Calendar, Tag, Award, Settings, ChevronDown, ChevronUp, Share2, Copy } from 'lucide-react'
 import { NoteCard } from '../components/NoteCard'
 import { SearchField } from '../components/SearchField'
-import { BRANCHES, NOTE_TYPES, SEMESTERS } from '../data/mockData'
+import { BRANCHES, NOTE_TYPES, SEMESTERS } from '../data/mockData.js'
 import { useNotes } from '../context/NotesContext'
 import { useToast } from '../context/ToastContext'
 import { filterAndSortNotes } from '../utils/noteFilters'
@@ -35,8 +37,8 @@ export function BrowseNotes() {
   }, [notes])
 
   const filtered = useMemo(
-    () =>
-      filterAndSortNotes(notes, {
+    () => {
+      const result = filterAndSortNotes(notes, {
         q,
         subjectCode,
         subject: subjectName,
@@ -52,7 +54,14 @@ export function BrowseNotes() {
         examOnly,
         pyqOnly,
         sort,
-      }, score),
+      }, score);
+      console.log('BrowseNotes Debug:', { 
+        totalNotes: notes.length, 
+        filteredCount: result.length, 
+        filters: { q, subjectCode, subjectName, semester, branch, sort }
+      });
+      return result;
+    },
     [
       notes,
       q,
@@ -108,201 +117,170 @@ export function BrowseNotes() {
   }
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-bold text-slate-50 sm:text-4xl">Browse notes</h1>
-          <p className="mt-2 max-w-2xl text-muted">
-            Subject code, name, tags, semester, branch, unit, file type, difficulty, and certification filters — plus quality-aware sorting.
+    <div className="space-y-12">
+      <motion.header 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-wrap items-end justify-between gap-6"
+      >
+        <div className="max-w-2xl">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-xl bg-emerald-500/10 px-3 py-1 text-sm font-bold text-emerald-600">
+            <BookOpen className="h-4 w-4" />
+            <span>Academic Library</span>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 mb-4">
+            Find your <span className="text-emerald-500">study material.</span>
+          </h1>
+          <p className="text-lg font-medium text-slate-600">
+            Access thousands of verified notes, previous year papers, and unit-wise study guides shared by your peers.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setAdvancedOpen((o) => !o)}
-          className="rounded-xl border border-accent/35 bg-accent/10 px-4 py-2 text-sm font-semibold text-accent hover:bg-accent/20"
-        >
-          {advancedOpen ? 'Hide advanced' : 'Advanced search'}
-        </button>
-      </header>
+        
+        <div className="flex items-center gap-3">
+          <motion.button
+            type="button"
+            onClick={copyShareLink}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="h-12 px-5 inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white text-sm font-bold text-slate-600 hover:border-emerald-500 hover:text-emerald-600 transition-all"
+          >
+            <Share2 className="h-4 w-4" />
+            Share Search
+          </motion.button>
+          
+          <motion.button
+            type="button"
+            onClick={() => setAdvancedOpen((o) => !o)}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="h-12 px-6 inline-flex items-center gap-2 rounded-xl bg-slate-900 text-sm font-bold text-white shadow-xl shadow-slate-900/10 hover:bg-emerald-600 transition-all"
+          >
+            {advancedOpen ? <ChevronUp className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
+            {advancedOpen ? 'Hide Filters' : 'Show Filters'}
+          </motion.button>
+        </div>
+      </motion.header>
 
-      <SearchField value={q} onChange={setQ} />
+      <div className="relative">
+        <div className="absolute inset-0 bg-emerald-500/5 blur-3xl rounded-full -z-10" />
+        <SearchField value={q} onChange={setQ} />
+      </div>
 
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-        <aside className={`glass w-full shrink-0 rounded-2xl border border-slate-600/20 p-5 lg:max-w-sm ${advancedOpen ? '' : 'hidden lg:block'}`}>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Advanced panel</h2>
-          <div className="mt-4 max-h-[70vh] space-y-4 overflow-y-auto pr-1">
-            <div>
-              <label className="text-xs font-medium text-slate-400">Semester</label>
-              <select
-                value={semester}
-                onChange={(e) => setSemester(e.target.value)}
-                className="focus-ring mt-1 w-full rounded-xl border border-slate-600/40 bg-surface-0/90 px-3 py-2.5 text-sm"
+      <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
+        {advancedOpen && (
+          <motion.aside 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="w-full lg:w-80 shrink-0 p-8 rounded-3xl bg-white border border-slate-200 shadow-sm sticky top-28"
+          >
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">Filters</h2>
+              <button 
+                onClick={() => {
+                  setSemester(''); setBranch(''); setNoteType(''); setFileType('');
+                }}
+                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
               >
-                <option value="">All</option>
-                {SEMESTERS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+                Reset All
+              </button>
             </div>
-            <div>
-              <label className="text-xs font-medium text-slate-400">Branch</label>
-              <select
-                value={branch}
-                onChange={(e) => setBranch(e.target.value)}
-                className="focus-ring mt-1 w-full rounded-xl border border-slate-600/40 bg-surface-0/90 px-3 py-2.5 text-sm"
-              >
-                <option value="">All</option>
-                {BRANCHES.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
-              </select>
+            
+            <div className="space-y-8">
+              <div>
+                <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-3">Branch</label>
+                <select
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl bg-slate-50 border-transparent focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-sm font-bold text-slate-700 transition-all cursor-pointer"
+                >
+                  <option value="">All Branches</option>
+                  {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-3">Semester</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {SEMESTERS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setSemester(semester === s ? '' : s)}
+                      className={`h-10 rounded-lg text-xs font-black transition-all ${
+                        Number(semester) === Number(s) 
+                          ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' 
+                          : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-3">Content Type</label>
+                <div className="space-y-2">
+                  {Object.entries(NOTE_TYPES).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => setNoteType(noteType === key ? '' : key)}
+                      className={`w-full h-11 px-4 rounded-xl text-left text-sm font-bold transition-all flex items-center justify-between ${
+                        noteType === key 
+                          ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/10' 
+                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      {label}
+                      {noteType === key && <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-slate-700">Verified Only</span>
+                  <button 
+                    onClick={() => setVerifiedOnly(!verifiedOnly)}
+                    className={`w-12 h-6 rounded-full transition-all relative ${verifiedOnly ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${verifiedOnly ? 'left-7' : 'left-1'}`} />
+                  </button>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="text-xs font-medium text-slate-400">Subject name</label>
-              <select
-                value={subjectName}
-                onChange={(e) => setSubjectName(e.target.value)}
-                className="focus-ring mt-1 w-full rounded-xl border border-slate-600/40 bg-surface-0/90 px-3 py-2.5 text-sm"
-              >
-                <option value="">All subjects</option>
-                {subjectOptions.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-400">Subject code</label>
-              <input
-                value={subjectCode}
-                onChange={(e) => setSubjectCode(e.target.value.toUpperCase())}
-                className="focus-ring mt-1 w-full rounded-xl border border-slate-600/40 bg-surface-0/90 px-3 py-2.5 font-mono text-sm"
-                placeholder="CS302"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-400">Unit / topic contains</label>
-              <input
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                className="focus-ring mt-1 w-full rounded-xl border border-slate-600/40 bg-surface-0/90 px-3 py-2.5 text-sm"
-                placeholder="Unit 3"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-400">Tags / keywords</label>
-              <input
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                className="focus-ring mt-1 w-full rounded-xl border border-slate-600/40 bg-surface-0/90 px-3 py-2.5 text-sm"
-                placeholder="comma separated: pyq, sql"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-400">File type</label>
-              <select
-                value={fileType}
-                onChange={(e) => setFileType(e.target.value)}
-                className="focus-ring mt-1 w-full rounded-xl border border-slate-600/40 bg-surface-0/90 px-3 py-2.5 text-sm"
-              >
-                <option value="">Any</option>
-                <option value="pdf">PDF</option>
-                <option value="image">Image</option>
-                <option value="docx">DOCX</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-400">Note category</label>
-              <select
-                value={noteType}
-                onChange={(e) => setNoteType(e.target.value)}
-                className="focus-ring mt-1 w-full rounded-xl border border-slate-600/40 bg-surface-0/90 px-3 py-2.5 text-sm"
-              >
-                <option value="">Any</option>
-                {Object.entries(NOTE_TYPES).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-400">Difficulty</label>
-              <select
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value)}
-                className="focus-ring mt-1 w-full rounded-xl border border-slate-600/40 bg-surface-0/90 px-3 py-2.5 text-sm"
-              >
-                <option value="">Any</option>
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="advanced">Advanced</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-400">Source</label>
-              <select
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-                className="focus-ring mt-1 w-full rounded-xl border border-slate-600/40 bg-surface-0/90 px-3 py-2.5 text-sm"
-              >
-                <option value="">Any</option>
-                <option value="student">Student</option>
-                <option value="faculty">Faculty</option>
-              </select>
-            </div>
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" checked={verifiedOnly} onChange={(e) => setVerifiedOnly(e.target.checked)} />
-              Faculty verified only
-            </label>
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" checked={examOnly} onChange={(e) => setExamOnly(e.target.checked)} />
-              Exam-focused
-            </label>
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" checked={pyqOnly} onChange={(e) => setPyqOnly(e.target.checked)} />
-              PYQ / papers only
-            </label>
-            <div>
-              <label className="text-xs font-medium text-slate-400">Sort</label>
-              <select
-                value={sort}
+          </motion.aside>
+        )}
+
+        <div className="flex-1">
+          <div className="mb-6 flex items-center justify-between">
+            <p className="text-sm font-bold text-slate-500">
+              Showing <span className="text-slate-900">{filtered.length}</span> materials
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-widest text-slate-400">Sort by:</span>
+              <select 
+                value={sort} 
                 onChange={(e) => setSort(e.target.value)}
-                className="focus-ring mt-1 w-full rounded-xl border border-slate-600/40 bg-surface-0/90 px-3 py-2.5 text-sm"
+                className="text-sm font-black text-emerald-600 bg-transparent cursor-pointer focus:outline-none"
               >
-                <option value="top">Most upvoted (net)</option>
-                <option value="quality">Quality score blend</option>
-                <option value="new">Most recent</option>
-                <option value="downloads">Most downloaded</option>
-                <option value="views">Most viewed</option>
+                <option value="top">Popularity</option>
+                <option value="new">Newest First</option>
+                <option value="score">Top Rated</option>
               </select>
             </div>
-            <button
-              type="button"
-              onClick={copyShareLink}
-              className="focus-ring w-full rounded-xl border border-accent/40 bg-accent/10 py-2.5 text-sm font-semibold text-accent hover:bg-accent/20"
-            >
-              Copy shareable link
-            </button>
           </div>
-        </aside>
 
-        <div className="min-w-0 flex-1 space-y-4">
-          <p className="text-sm text-muted">
-            Showing <strong className="text-gray-800">{filtered.length}</strong> of {notes.length}
-          </p>
           {filtered.length === 0 ? (
-            <div className="glass rounded-2xl border border-dashed border-slate-600/40 py-16 text-center">
-              <p className="font-display text-lg text-gray-800">No notes match</p>
-              <p className="mt-2 text-sm text-muted">Relax filters or clear PYQ-only toggles.</p>
+            <div className="py-24 text-center rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200">
+              <div className="mx-auto w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4">
+                <Search className="h-8 w-8 text-slate-300" />
+              </div>
+              <h3 className="text-xl font-black text-slate-900 mb-2">No results found</h3>
+              <p className="text-slate-500 font-medium">Try adjusting your filters or search terms</p>
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filtered.map((note) => (
                 <NoteCard key={note.id} note={note} />
               ))}

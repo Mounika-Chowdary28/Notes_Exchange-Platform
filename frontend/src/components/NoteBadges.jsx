@@ -29,7 +29,7 @@ export function NoteBadges({ note, compact }) {
         <span
           key={x.key}
           title={x.label}
-          className="inline-flex items-center gap-1 rounded-md border border-accent/25 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-2"
+          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-600 shadow-sm"
         >
           <span aria-hidden>{x.emoji}</span>
           {x.label}

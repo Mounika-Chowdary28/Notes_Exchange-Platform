@@ -11,14 +11,14 @@ export function QualityBadge({ note }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span
-        className="rounded-lg border border-accent-2/30 bg-accent-2/10 px-2 py-1 font-mono text-xs font-bold text-accent-2"
+        className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-600 shadow-sm"
         title="Composite quality score"
       >
-        {q.toFixed(1)} / 5
+        {q.toFixed(1)} <span className="text-[10px] opacity-60">/ 5.0</span>
       </span>
       {helpful ? (
-        <span className="rounded-lg border border-gold/35 bg-gold/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gold">
-          Most helpful
+        <span className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-amber-600 shadow-sm">
+          🔥 Most helpful
         </span>
       ) : null}
     </div>

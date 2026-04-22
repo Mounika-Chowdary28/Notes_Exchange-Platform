@@ -1,3 +1,4 @@
+import { ThumbsUp, ThumbsDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useGamification } from '../context/GamificationContext'
 import { useNotes } from '../context/NotesContext'
@@ -23,32 +24,36 @@ export function VoteControl({ noteId, className = '' }) {
   }
 
   return (
-    <div className={`flex items-center gap-1 rounded-xl border border-slate-600/30 bg-surface-1/80 p-1 ${className}`}>
+    <div className={`flex items-center gap-1 rounded-xl bg-slate-50 p-1 border border-slate-200 ${className}`}>
       <button
         type="button"
         onClick={() => onVote('up')}
-        className={`focus-ring flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition hover:bg-surface-2 ${
-          s.userVote === 'up' ? 'text-accent bg-surface-2' : 'text-slate-300'
+        className={`group/up flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-black transition-all ${
+          s.userVote === 'up' 
+            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' 
+            : 'text-slate-400 hover:bg-white hover:text-emerald-500'
         }`}
         aria-pressed={s.userVote === 'up'}
         aria-label="Upvote"
       >
-        <span aria-hidden>▲</span>
+        <ThumbsUp className={`h-3.5 w-3.5 transition-transform group-hover/up:scale-110 ${s.userVote === 'up' ? 'fill-current' : ''}`} />
         {s.up}
       </button>
-      <span className="px-1 text-xs font-semibold text-muted" title="Net score · total votes">
-        {s.net} <span className="text-[10px] opacity-80">({s.up + s.down})</span>
-      </span>
+
+      <div className="h-4 w-[1px] bg-slate-200 mx-1" />
+
       <button
         type="button"
         onClick={() => onVote('down')}
-        className={`focus-ring flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition hover:bg-surface-2 ${
-          s.userVote === 'down' ? 'text-danger bg-surface-2' : 'text-slate-300'
+        className={`group/down flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-black transition-all ${
+          s.userVote === 'down' 
+            ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' 
+            : 'text-slate-400 hover:bg-white hover:text-rose-500'
         }`}
         aria-pressed={s.userVote === 'down'}
         aria-label="Downvote"
       >
-        <span aria-hidden>▼</span>
+        <ThumbsDown className={`h-3.5 w-3.5 transition-transform group-hover/down:scale-110 ${s.userVote === 'down' ? 'fill-current' : ''}`} />
         {s.down}
       </button>
     </div>

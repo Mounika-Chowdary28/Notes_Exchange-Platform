@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { Download, Eye, ThumbsUp, ThumbsDown, Bookmark, Star, FileText, Image, Calendar, User } from 'lucide-react'
 import { useNotes } from '../context/NotesContext'
 import { VoteControl } from './VoteControl'
 import { BookmarkButton } from './BookmarkButton'
@@ -6,86 +8,92 @@ import { NoteBadges } from './NoteBadges'
 import { QualityBadge } from './QualityBadge'
 
 function FileBadge({ type }) {
-  const cls =
-    type === 'pdf'
-      ? 'bg-rose-400/30 text-rose-700'
-      : type === 'docx'
-        ? 'bg-sky-400/30 text-sky-700'
-        : 'bg-accent/30 text-accent'
-  const label = type === 'docx' ? 'DOCX' : type === 'pdf' ? 'PDF' : 'IMG'
+  const configs = {
+    pdf: { cls: 'bg-gradient-to-r from-rose-400/20 to-pink-400/20 text-rose-700 border border-rose-300/30', label: 'PDF', icon: FileText },
+    docx: { cls: 'bg-gradient-to-r from-sky-400/20 to-blue-400/20 text-sky-700 border border-sky-300/30', label: 'DOCX', icon: FileText },
+    img: { cls: 'bg-gradient-to-r from-emerald-400/20 to-green-400/20 text-emerald-700 border border-emerald-300/30', label: 'IMG', icon: Image }
+  }
+  const config = configs[type] || configs.pdf
+  const Icon = config.icon
+  
   return (
-    <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${cls}`}>{label}</span>
+    <div className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${config.cls}`}>
+      <Icon className="h-3 w-3" />
+      {config.label}
+    </div>
   )
 }
 
 export function NoteCard({ note }) {
   const { score } = useNotes()
   const s = score(note)
+  const noteId = note.id || note._id
 
   return (
-    <article className="group glass relative flex flex-col overflow-hidden rounded-2xl transition hover:border-accent/30 hover:shadow-lg hover:shadow-accent/10">
-      <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-calm/5 opacity-0 transition group-hover:opacity-100" />
-      <div className="relative flex flex-1 flex-col p-5">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+    <motion.article 
+      className="group relative flex flex-col overflow-hidden rounded-3xl bg-white border border-slate-200 transition-all duration-500 hover:border-emerald-500/50 hover:shadow-[0_20px_50px_-12px_rgba(16,185,129,0.15)]"
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -8 }}
+    >
+      {/* Top Actions */}
+      <div className="absolute top-4 right-4 z-10">
+        <BookmarkButton noteId={noteId} className="shadow-xl" />
+      </div>
+      
+      <div className="relative flex flex-1 flex-col p-6">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
           <FileBadge type={note.fileType} />
-          <span className="rounded-md bg-surface-2 px-2 py-0.5 font-mono text-[11px] text-calm">{note.subjectCode}</span>
-          <span className="text-[11px] text-muted">
-            Sem {note.semester} · {note.branch}
+          <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-widest bg-slate-100 text-slate-500 rounded-lg">
+            {note.subjectCode}
           </span>
-          {note.unit ? (
-            <span className="text-[10px] text-muted" title="Unit / topic">
-              {note.unit}
-            </span>
-          ) : null}
         </div>
-        <div className="mb-2">
-          <NoteBadges note={note} compact />
-        </div>
-        <Link to={`/notes/${note.id}`} className="focus-ring rounded-lg outline-offset-2">
-          <h3 className="font-display text-lg font-semibold leading-snug text-gray-900 transition group-hover:text-accent">
+        
+        <Link to={`/notes/${noteId}`} className="group/title block mb-2">
+          <h3 className="text-xl font-black text-slate-900 leading-tight group-hover/title:text-emerald-600 transition-colors line-clamp-2 min-h-[3.5rem]">
             {note.title}
           </h3>
         </Link>
-        <p className="mt-1 text-sm text-muted">{note.subject}</p>
-        {(note.tags || []).length ? (
-          <p className="mt-2 text-[11px] text-gray-600">
-            {(note.tags || []).slice(0, 4).map((t) => (
-              <span key={t} className="mr-2 rounded bg-surface-2/80 px-1.5 py-0.5 font-mono text-accent/90">
-                #{t}
-              </span>
-            ))}
-          </p>
-        ) : null}
-        {note.description ? (
-          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-gray-600">{note.description}</p>
-        ) : null}
-        <div className="mt-3">
-          <QualityBadge note={note} />
-        </div>
-        <div className="mt-auto flex flex-wrap items-center gap-3 pt-4 text-xs text-muted">
-          <span title="Votes">
-            {s.up + s.down} votes · net {s.net > 0 ? `+${s.net}` : s.net}
-          </span>
-          <span>·</span>
-          <span>{note.downloads} downloads</span>
-          <span>·</span>
-          <span>{note.views ?? 0} views</span>
-          <span>·</span>
-          <span className="truncate">by {note.uploadedBy.name}</span>
-        </div>
-        <div className="relative mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-300/20 pt-4">
-          <VoteControl noteId={note.id} />
-          <div className="flex gap-2">
-            <BookmarkButton noteId={note.id} />
-            <Link
-              to={`/notes/${note.id}`}
-              className="focus-ring inline-flex items-center rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-sm font-semibold text-accent transition hover:bg-accent/20"
-            >
-              Open
-            </Link>
+        
+        <p className="text-sm font-bold text-slate-500 mb-4 line-clamp-1">{note.subject}</p>
+        
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-1.5">
+            <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center">
+              <User className="h-3 w-3 text-slate-400" />
+            </div>
+            <span className="text-xs font-bold text-slate-600 truncate max-w-[100px]">{note.uploadedBy?.name || 'Student'}</span>
+          </div>
+          <div className="h-1 w-1 rounded-full bg-slate-300" />
+          <div className="text-xs font-bold text-slate-500 uppercase tracking-tighter">
+            Sem {note.semester} · {note.branch}
           </div>
         </div>
+
+        <div className="mt-auto pt-4 border-t border-slate-100 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1 text-slate-400">
+                <Eye className="h-4 w-4" />
+                <span className="text-xs font-black">{note.views ?? 0}</span>
+              </div>
+              <div className="flex items-center gap-1 text-slate-400">
+                <Download className="h-4 w-4" />
+                <span className="text-xs font-black">{note.downloads ?? 0}</span>
+              </div>
+            </div>
+            
+            <Link 
+              to={`/notes/${noteId}`}
+              className="h-9 px-4 inline-flex items-center justify-center rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition-all active:scale-95 shadow-lg shadow-slate-900/10"
+            >
+              View Note
+            </Link>
+          </div>
+
+          <VoteControl noteId={noteId} className="w-full justify-center" />
+        </div>
       </div>
-    </article>
+    </motion.article>
   )
 }

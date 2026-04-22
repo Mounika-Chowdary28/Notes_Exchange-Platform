@@ -50,55 +50,96 @@ function CommentBlock({ note, c, depth = 0 }) {
   const nested = (c.replies || []).filter(Boolean)
 
   return (
-    <li
-      className={`rounded-xl border border-gray-300/20 bg-white/60 p-4 ${depth ? 'ml-4 border-l-2 border-l-accent/40' : ''}`}
-    >
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="font-semibold text-accent">{c.authorName}</span>
-        <time className="text-xs text-muted" dateTime={c.createdAt}>
-          {formatDate(c.createdAt)}
-        </time>
+    <li className={`group/comment space-y-4 ${depth > 0 ? 'ml-8 mt-4 border-l-2 border-slate-100 pl-6' : ''}`}>
+      <div className="flex items-start gap-4">
+        <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 font-black text-sm shrink-0 shadow-sm border border-slate-200">
+          {(c.authorName || 'S')[0]}
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-black text-slate-900 text-sm">{c.authorName}</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+              {formatDate(c.createdAt)}
+            </span>
+            {c.bestAnswer && (
+              <span className="bg-amber-100 text-amber-600 text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider border border-amber-200">
+                Best Answer
+              </span>
+            )}
+          </div>
+          
+          <p className="text-sm font-medium text-slate-600 leading-relaxed mb-3">
+            {c.body}
+          </p>
+
+          <div className="flex items-center gap-4">
+            <button
+              onClick={helpful}
+              className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${
+                (c.helpful || 0) > 0 ? 'text-emerald-600' : 'text-slate-400 hover:text-emerald-500'
+              }`}
+            >
+              <ThumbsUp className="h-3 w-3" />
+              Helpful ({c.helpful || 0})
+            </button>
+            
+            {depth === 0 && (
+              <button
+                onClick={() => setOpen(!open)}
+                className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors"
+              >
+                Reply
+              </button>
+            )}
+
+            {isAuthor && !c.bestAnswer && (
+              <button
+                onClick={best}
+                className="text-[10px] font-black text-amber-500 uppercase tracking-widest hover:text-amber-600 transition-colors"
+              >
+                Mark Best
+              </button>
+            )}
+          </div>
+        </div>
       </div>
-      {c.bestAnswer ? (
-        <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-warm">★ Best answer</p>
-      ) : null}
-      <p className="mt-2 text-sm leading-relaxed text-gray-700">{c.body}</p>
-      <div className="mt-3 flex flex-wrap gap-2 text-xs">
-        <button type="button" onClick={helpful} className="rounded-lg border border-gray-300/40 px-2 py-1 text-gray-700 hover:bg-surface-2">
-          Helpful ({c.helpful || 0})
-        </button>
-        {isAuthor ? (
-          <button type="button" onClick={best} className="rounded-lg border border-warm/40 px-2 py-1 text-warm hover:bg-warm/10">
-            Mark best
-          </button>
-        ) : null}
-        {depth === 0 ? (
-          <button type="button" onClick={() => setOpen((o) => !o)} className="rounded-lg border border-accent/35 px-2 py-1 text-accent hover:bg-accent/10">
-            Reply
-          </button>
-        ) : null}
-      </div>
-      {open ? (
-        <form onSubmit={submitReply} className="mt-3 space-y-2">
+
+      {open && (
+        <form onSubmit={submitReply} className="ml-14 animate-in fade-in slide-in-from-top-2">
           <textarea
             rows={2}
             value={reply}
             onChange={(e) => setReply(e.target.value)}
-            placeholder="Write a reply…"
-            className="focus-ring w-full rounded-lg border border-gray-300 bg-white/95 p-2 text-sm text-gray-900 placeholder:text-gray-400"
+            placeholder={`Reply to ${c.authorName}...`}
+            className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all shadow-sm"
           />
-          <button type="submit" className="rounded-lg bg-accent px-3 py-1 text-xs font-bold text-white">
-            Post reply
-          </button>
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="px-3 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!reply.trim()}
+              className="h-8 px-4 inline-flex items-center justify-center rounded-lg bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all disabled:opacity-30"
+            >
+              Post Reply
+            </button>
+          </div>
         </form>
-      ) : null}
-      {nested.length ? (
-        <ul className="mt-4 space-y-3">
+      )}
+
+      {nested.length > 0 && (
+        <ul className="space-y-4">
           {nested.map((r) => (
             <CommentBlock key={r.id} note={note} c={r} depth={depth + 1} />
           ))}
         </ul>
-      ) : null}
+      )}
     </li>
   )
 }
@@ -126,40 +167,41 @@ export function CommentThread({ note }) {
   }
 
   return (
-    <section className="glass rounded-2xl border border-slate-600/20 p-6">
-      <h2 className="font-display text-xl font-semibold text-gray-900">Discussion</h2>
-      <p className="mt-1 text-sm text-muted">Threaded replies, helpful votes, and best-answer highlights.</p>
+    <section className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h2 className="text-xl font-black text-slate-900">Comments</h2>
+          <p className="text-sm font-medium text-slate-500">{list.length} discussions in this thread</p>
+        </div>
+      </div>
 
-      <ul className="mt-6 space-y-4">
+      <ul className="space-y-6 mb-8">
         {list.length === 0 ? (
-          <li className="rounded-xl border border-dashed border-gray-300/40 py-8 text-center text-sm text-muted">
-            No comments yet. Start the thread.
+          <li className="py-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <div className="text-slate-400 font-bold mb-1">No comments yet</div>
+            <p className="text-xs text-slate-500">Be the first to start the discussion!</p>
           </li>
         ) : (
           list.map((c) => <CommentBlock key={c.id} note={note} c={c} />)
         )}
       </ul>
 
-      <form onSubmit={submit} className="mt-6">
-        <label htmlFor="comment" className="sr-only">
-          Add a comment
-        </label>
+      <form onSubmit={submit} className="relative group">
         <textarea
-          id="comment"
           rows={3}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={isAuthenticated ? 'Ask a doubt or say thanks…' : 'Sign in to comment'}
+          placeholder={isAuthenticated ? 'Write a comment...' : 'Sign in to join the discussion'}
           disabled={!isAuthenticated}
-          className="focus-ring w-full rounded-xl border border-gray-300 bg-white/95 p-3 text-sm text-gray-900 placeholder:text-gray-400 disabled:opacity-50"
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all disabled:opacity-50"
         />
-        <div className="mt-3 flex justify-end">
+        <div className="mt-4 flex justify-end">
           <button
             type="submit"
             disabled={!isAuthenticated || !text.trim()}
-            className="focus-ring rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+            className="h-10 px-6 inline-flex items-center justify-center rounded-xl bg-slate-900 text-white text-sm font-black uppercase tracking-widest hover:bg-emerald-600 transition-all active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
           >
-            Post comment
+            Post Comment
           </button>
         </div>
       </form>

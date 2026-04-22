@@ -1,27 +1,42 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { Chatbot } from '../components/Chatbot'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Menu, X, Home, BookOpen, FileText, Target, Bookmark, User, LogOut, Upload, Settings, Crown } from 'lucide-react'
 import { Logo } from '../components/Logo'
+import { Footer } from '../components/Footer'
 import { ToastHost } from '../components/ToastHost'
 import { useAuth } from '../context/AuthContext'
 
-const navClass = ({ isActive }) =>
-  `rounded-lg px-3 py-1.5 text-xs md:text-sm font-medium transition whitespace-nowrap ${
-    isActive ? 'bg-accent text-white shadow-md' : 'text-gray-700 hover:bg-surface-3 hover:text-accent'
+const links = [
+  { to: '/browse', label: 'Browse', icon: BookOpen },
+  { to: '/papers', label: 'Papers', icon: FileText },
+  { to: '/collections', label: 'Collections', icon: Bookmark },
+  { to: '/bookmarks', label: 'Saved', icon: Bookmark },
+]
+
+// Modern navigation link styles with proper hover effects
+const navLinkClass = ({ isActive }) =>
+  `relative px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-300 ease-out flex items-center gap-2 ${
+    isActive
+      ? 'bg-emerald-500/10 text-emerald-600 shadow-sm shadow-emerald-500/5'
+      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
   }`
 
-const links = [
-  { to: '/browse', label: 'Browse' },
-  { to: '/papers', label: 'Papers' },
-  { to: '/exam-prep', label: 'Exam Prep' },
-  { to: '/collections', label: 'Collections' },
-  { to: '/bookmarks', label: 'Saved' },
-]
+const primaryButtonClass = "inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl bg-slate-900 text-white shadow-xl shadow-slate-900/10 transition-all duration-300 ease-out hover:shadow-2xl hover:scale-105 hover:bg-emerald-600 active:scale-95"
+
+const secondaryButtonClass = "inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl border-2 border-slate-200 bg-white text-slate-700 shadow-sm transition-all duration-300 ease-out hover:border-emerald-500 hover:text-emerald-600 hover:shadow-lg active:scale-95"
 
 export function AppShell({ children }) {
   const { user, isAuthenticated, isAdmin, logout } = useAuth()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20)
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   useEffect(() => {
     const onKey = (e) => {
@@ -44,164 +59,300 @@ export function AppShell({ children }) {
     <div className="bg-grid mesh-gradient min-h-screen">
       <a
         href="#main"
-        className="focus-ring sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[200] focus:rounded-lg focus:bg-surface-2 focus:px-3 focus:py-2"
+        className="focus-ring sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[200] focus:rounded-xl focus:bg-gradient-to-r focus:from-emerald-500 focus:to-cyan-500 focus:px-4 focus:py-2 focus:text-white focus:shadow-lg"
       >
         Skip to content
       </a>
-      <header className="sticky top-0 z-50 border-b border-accent/10 bg-white/95 backdrop-blur-md shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="flex items-center justify-between gap-4 py-3">
-            <Logo />
-            <nav className="hidden flex-1 flex-wrap items-center justify-start gap-0.5 lg:flex ml-8" aria-label="Primary">
-              {links.map((l) => (
-                <NavLink key={l.to} to={l.to} className={navClass}>
-                  {l.label}
-                </NavLink>
-              ))}
-              {isAdmin ? (
-                <NavLink to="/admin" className={navClass}>
-                  Admin
-                </NavLink>
-              ) : null}
+      <header className={`sticky top-0 z-50 transition-all duration-300 ${
+        scrolled 
+          ? 'bg-white/80 backdrop-blur-lg shadow-lg shadow-slate-200/50 py-2' 
+          : 'bg-transparent py-4'
+      }`}>
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="flex items-center justify-between h-14">
+            {/* Left: Logo */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center"
+            >
+              <Logo className="h-9 w-auto" />
+            </motion.div>
+            
+            {/* Center: Navigation Links */}
+            <nav className="hidden lg:flex items-center bg-slate-100/50 p-1.5 rounded-2xl border border-slate-200/60" aria-label="Primary navigation">
+              <div className="flex items-center space-x-1">
+                {links.map((l, index) => (
+                  <NavLink 
+                    key={l.to}
+                    to={l.to} 
+                    className={navLinkClass}
+                  >
+                    <l.icon className="h-4 w-4" />
+                    {l.label}
+                  </NavLink>
+                ))}
+                {isAdmin && (
+                  <NavLink to="/admin" className={navLinkClass}>
+                    <Crown className="h-4 w-4" />
+                    Admin
+                  </NavLink>
+                )}
+              </div>
             </nav>
-            <div className="flex items-center gap-2">
-              {isAuthenticated ? (
-                <Link
-                  to="/upload"
-                  className="hidden sm:inline-flex items-center justify-center rounded-lg bg-accent px-3 py-2 text-xs sm:text-sm font-semibold text-white hover:brightness-110 transition"
-                >
-                  Upload
-                </Link>
-              ) : null}
-              {isAuthenticated ? (
-                <Link
-                  to="/dashboard"
-                  className="hidden sm:inline-flex items-center justify-center rounded-lg bg-accent/10 px-3 py-2 text-xs sm:text-sm font-medium text-accent hover:bg-accent/20 transition"
-                >
-                  Dashboard
-                </Link>
-              ) : null}
+            
+            {/* Right: Action Buttons */}
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+              className="flex items-center space-x-2"
+            >
               {isAuthenticated ? (
                 <>
-                  <span className="hidden md:block max-w-[120px] truncate text-xs text-muted xl:max-w-[160px] xl:text-sm" title={user?.email}>
-                    {user?.role === 'admin' ? '👑' : ''} {user?.name?.split(' ')[0]}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="focus-ring rounded-lg border border-gray-300 px-3 py-2 text-xs sm:text-sm text-gray-700 hover:bg-surface-2"
+                  <Link
+                    to="/upload"
+                    className={primaryButtonClass}
                   >
-                    Log out
-                  </button>
+                    <Upload className="h-4 w-4" />
+                    <span className="hidden sm:inline">Upload</span>
+                  </Link>
+                  <Link
+                    to="/dashboard"
+                    className={secondaryButtonClass}
+                  >
+                    <User className="h-4 w-4" />
+                    <span className="hidden sm:inline">Dashboard</span>
+                  </Link>
+                  
+                  <div className="hidden md:flex items-center space-x-2 pl-2 border-l border-gray-200">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-50">
+                      {user?.role === 'admin' ? (
+                        <Crown className="h-3 w-3 text-yellow-500" />
+                      ) : (
+                        <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                      )}
+                      <span className="text-sm font-medium text-gray-700 truncate max-w-[100px]">
+                        {user?.name?.split(' ')[0]}
+                      </span>
+                    </div>
+                    <motion.button
+                      type="button"
+                      onClick={handleLogout}
+                      className="p-2 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      title="Log out"
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </motion.button>
+                  </div>
                 </>
               ) : (
-                <div className="flex items-center gap-2">
+                <>
                   <Link
                     to="/auth"
                     state={{ mode: 'login' }}
-                    className="focus-ring rounded-lg border border-gray-300 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-gray-700 hover:bg-surface-2 transition block"
+                    className={secondaryButtonClass}
                   >
-                    Log in
+                    <LogOut className="h-4 w-4" />
+                    <span className="hidden sm:inline">Log in</span>
                   </Link>
                   <Link
                     to="/auth"
                     state={{ mode: 'signup' }}
-                    className="focus-ring rounded-lg bg-accent px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-md transition hover:brightness-110 block"
+                    className={primaryButtonClass}
                   >
-                    Sign up
+                    <User className="h-4 w-4" />
+                    <span className="hidden sm:inline">Sign up</span>
                   </Link>
-                </div>
+                </>
               )}
-            </div>
-            <button
-              type="button"
-              className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 text-gray-700 lg:hidden"
-              aria-expanded={open}
-              aria-label="Menu"
-              onClick={() => setOpen((o) => !o)}
-            >
-              <span className="text-xl leading-none">☰</span>
-            </button>
+              
+              {/* Mobile Menu Button */}
+              <motion.button
+                type="button"
+                className="lg:hidden p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-all duration-200"
+                aria-expanded={open}
+                aria-label="Toggle menu"
+                onClick={() => setOpen((o) => !o)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <AnimatePresence mode="wait">
+                  {open ? (
+                    <motion.div
+                      key="close"
+                      initial={{ rotate: -90, opacity: 0 }}
+                      animate={{ rotate: 0, opacity: 1 }}
+                      exit={{ rotate: 90, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <X className="h-5 w-5" />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="menu"
+                      initial={{ rotate: 90, opacity: 0 }}
+                      animate={{ rotate: 0, opacity: 1 }}
+                      exit={{ rotate: -90, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Menu className="h-5 w-5" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.button>
+            </motion.div>
           </div>
-          {open ? (
-            <div className="border-t border-accent/10 bg-surface-1/98 px-4 py-3 lg:hidden">
-            <div className="flex flex-col gap-2">
-              {links.map((l) => (
-                <NavLink key={l.to} to={l.to} className={navClass} onClick={() => setOpen(false)}>
-                  {l.label}
-                </NavLink>
-              ))}
-              {isAdmin ? (
-                <NavLink to="/admin" className={navClass} onClick={() => setOpen(false)}>
-                  Admin
-                </NavLink>
-              ) : null}
-              {isAuthenticated ? (
-                <NavLink
-                  to="/upload"
-                  className={navClass}
-                  onClick={() => setOpen(false)}
-                >
-                  Upload
-                </NavLink>
-              ) : null}
-              {isAuthenticated ? (
-                <NavLink
-                  to="/dashboard"
-                  className={navClass}
-                  onClick={() => setOpen(false)}
-                >
-                  Dashboard
-                </NavLink>
-              ) : null}
-              {!isAuthenticated ? (
-                <div className="flex flex-col gap-2 mt-3">
-                  <Link
-                    to="/auth"
-                    state={{ mode: 'login' }}
-                    className="rounded-lg border border-gray-300 py-2 text-center text-sm font-semibold text-gray-700 hover:bg-surface-2 transition block"
-                    onClick={() => setOpen(false)}
-                  >
-                    Log in
-                  </Link>
-                  <Link
-                    to="/auth"
-                    state={{ mode: 'signup' }}
-                    className="rounded-lg bg-accent py-2 text-center text-sm font-semibold text-white transition hover:brightness-110 block"
-                    onClick={() => setOpen(false)}
-                  >
-                    Sign up
-                  </Link>
+          
+          <AnimatePresence>
+            {open && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="border-t border-gray-200 bg-white/95 backdrop-blur-xl lg:hidden overflow-hidden"
+              >
+                <div className="px-6 py-6">
+                  <div className="space-y-2">
+                    {/* Mobile Navigation Links */}
+                    {links.map((l, index) => (
+                      <motion.div
+                        key={l.to}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05, duration: 0.3 }}
+                      >
+                        <NavLink 
+                          to={l.to} 
+                          className={navLinkClass}
+                          onClick={() => setOpen(false)}
+                        >
+                          <span className="flex items-center gap-3">
+                            <l.icon className="h-5 w-5" />
+                            {l.label}
+                          </span>
+                        </NavLink>
+                      </motion.div>
+                    ))}
+                    {isAdmin && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: links.length * 0.05, duration: 0.3 }}
+                      >
+                        <NavLink to="/admin" className={navLinkClass} onClick={() => setOpen(false)}>
+                          <span className="flex items-center gap-3">
+                            <Crown className="h-5 w-5" />
+                            Admin
+                          </span>
+                        </NavLink>
+                      </motion.div>
+                    )}
+                    
+                    {/* Mobile Action Buttons */}
+                    {isAuthenticated ? (
+                      <>
+                        <div className="pt-4 border-t border-gray-200 space-y-2">
+                          <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: (links.length + 1) * 0.05, duration: 0.3 }}
+                          >
+                            <Link
+                              to="/upload"
+                              className={primaryButtonClass}
+                              onClick={() => setOpen(false)}
+                            >
+                              <Upload className="h-4 w-4" />
+                              Upload
+                            </Link>
+                          </motion.div>
+                          <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: (links.length + 2) * 0.05, duration: 0.3 }}
+                          >
+                            <Link
+                              to="/dashboard"
+                              className={secondaryButtonClass}
+                              onClick={() => setOpen(false)}
+                            >
+                              <User className="h-4 w-4" />
+                              Dashboard
+                            </Link>
+                          </motion.div>
+                          <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: (links.length + 3) * 0.05, duration: 0.3 }}
+                            className="flex items-center justify-between pt-2"
+                          >
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-50">
+                              {user?.role === 'admin' ? (
+                                <Crown className="h-3 w-3 text-yellow-500" />
+                              ) : (
+                                <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                              )}
+                              <span className="text-sm font-medium text-gray-700">
+                                {user?.name?.split(' ')[0]}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleLogout}
+                              className="p-2 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
+                            >
+                              <LogOut className="h-4 w-4" />
+                            </button>
+                          </motion.div>
+                        </div>
+                      </>
+                    ) : (
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: (links.length + 1) * 0.05, duration: 0.3 }}
+                        className="pt-4 border-t border-gray-200 space-y-2"
+                      >
+                        <Link
+                          to="/auth"
+                          state={{ mode: 'login' }}
+                          className={secondaryButtonClass}
+                          onClick={() => setOpen(false)}
+                        >
+                          <LogOut className="h-4 w-4" />
+                          Log in
+                        </Link>
+                        <Link
+                          to="/auth"
+                          state={{ mode: 'signup' }}
+                          className={primaryButtonClass}
+                          onClick={() => setOpen(false)}
+                        >
+                          <User className="h-4 w-4" />
+                          Sign up
+                        </Link>
+                      </motion.div>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  className="mt-2 rounded-lg border border-gray-300 py-2 text-sm text-gray-700"
-                  onClick={handleLogout}
-                >
-                  Log out
-                </button>
-              )}
-            </div>
-            </div>
-          ) : null}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </header>
 
-      <main id="main" className="w-full py-0 sm:py-0">
-        {children}
+      <main id="main" className="w-full py-0 sm:py-0 px-4 sm:px-6 lg:px-12 xl:px-16">
+        <div className="mx-auto max-w-7xl">
+          {children}
+        </div>
       </main>
 
-      <footer className="mt-16 w-full border-t border-accent/10 py-10 text-center text-sm text-muted">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <p>Notes Exchange — Green · Orange · Teal theme.</p>
-          <p className="mt-1">
-            API: <code className="text-accent">VITE_API_URL</code> · Features run in-browser until wired.
-          </p>
-        </div>
-      </footer>
+      <Footer />
       <ToastHost />
-      <Chatbot />
     </div>
   )
 }

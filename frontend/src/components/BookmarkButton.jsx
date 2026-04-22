@@ -1,3 +1,4 @@
+import { Star } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNotes } from '../context/NotesContext'
 import { useToast } from '../context/ToastContext'
@@ -21,16 +22,16 @@ export function BookmarkButton({ noteId, className = '' }) {
     <button
       type="button"
       onClick={handle}
-      className={`focus-ring inline-flex items-center gap-2 rounded-xl border border-slate-600/35 bg-surface-1/80 px-3 py-2 text-sm font-medium transition hover:border-accent/40 hover:bg-surface-2 ${
-        on ? 'text-warm border-warm/30' : 'text-slate-300'
+      className={`group/bookmark flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-all ${
+        on 
+          ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' 
+          : 'bg-white/80 backdrop-blur-sm text-slate-400 border border-slate-200 hover:border-amber-500 hover:text-amber-500'
       } ${className}`}
       aria-pressed={on}
       aria-label={on ? 'Remove bookmark' : 'Bookmark'}
     >
-      <span className="text-base" aria-hidden>
-        {on ? '★' : '☆'}
-      </span>
-      {on ? 'Saved' : 'Save'}
+      <Star className={`h-4 w-4 transition-transform group-hover/bookmark:scale-110 ${on ? 'fill-current' : ''}`} />
+      <span>{on ? 'Saved' : 'Save'}</span>
     </button>
   )
 }

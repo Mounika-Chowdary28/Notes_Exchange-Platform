@@ -1,4 +1,6 @@
 import { useMemo } from 'react'
+import { motion } from 'framer-motion'
+import { FileText, Calendar, Clock, Download, Eye, Search, Filter, Award, BookOpen, Archive, TrendingUp, Star, Zap } from 'lucide-react'
 import { NoteCard } from '../components/NoteCard'
 import { useNotes } from '../context/NotesContext'
 import { filterAndSortNotes } from '../utils/noteFilters'
@@ -20,22 +22,37 @@ export function Papers() {
   )
 
   return (
-    <div className="space-y-8">
-      <header>
-        <h1 className="font-display text-3xl font-bold text-slate-50">Previous year papers & banks</h1>
-        <p className="mt-2 text-muted">PYQs, mid/end sem papers, lab manuals, and question banks in one lane.</p>
-      </header>
-      <div className="grid gap-6 md:grid-cols-2">
-        {list.length > 0 ? (
-          list.map((n) => (
-            <NoteCard key={n.id} note={n} />
-          ))
-        ) : (
-          <div className="col-span-full rounded-2xl border border-dashed border-slate-600/30 py-12 text-center">
-            <p className="text-muted">No previous year papers or question banks found.</p>
-            <p className="mt-1 text-xs text-slate-500">Try searching in "Browse" or upload a new paper with the correct category.</p>
+    <div className="space-y-12">
+      <motion.header 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-wrap items-end justify-between gap-6"
+      >
+        <div className="max-w-2xl">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-xl bg-orange-500/10 px-3 py-1 text-sm font-bold text-orange-600">
+            <Archive className="h-4 w-4" />
+            <span>Archive</span>
           </div>
-        )}
+          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 mb-4">
+            Previous Year <span className="text-orange-500">Papers.</span>
+          </h1>
+          <p className="text-lg font-medium text-slate-600">
+            Access a comprehensive collection of mid-term, end-sem papers, and question banks.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="h-12 px-6 inline-flex items-center gap-2 rounded-xl bg-slate-100 text-sm font-bold text-slate-600">
+            <FileText className="h-4 w-4" />
+            {list.length} Papers
+          </div>
+        </div>
+      </motion.header>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {list.map((note) => (
+          <NoteCard key={note.id} note={note} />
+        ))}
       </div>
     </div>
   )
