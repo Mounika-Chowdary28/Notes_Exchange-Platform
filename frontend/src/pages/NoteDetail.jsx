@@ -227,7 +227,12 @@ export function NoteDetail() {
         </div>
         <div className="min-h-[380px] bg-surface-0/50">
           {previewPdf && canEmbed(note.fileUrl) ? (
-            <iframe title="PDF preview" src={note.fileUrl} className="h-[65vh] w-full border-0" />
+            <iframe
+              title="PDF preview"
+              src={`${note.fileUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+              className="h-[65vh] w-full border-0"
+              allow="autoplay"
+            />
           ) : note.fileType === 'image' && canEmbed(note.fileUrl) ? (
             <img src={note.fileUrl} alt="" className="mx-auto max-h-[65vh] w-auto object-contain p-4" />
           ) : (

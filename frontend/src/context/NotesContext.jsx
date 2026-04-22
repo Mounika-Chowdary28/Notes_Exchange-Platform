@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { cloneNotes } from '../data/mockData'
 import { hasBackend } from '../lib/api'
-import { voteOnNote } from '../services/noteService'
+import { useAuth } from './AuthContext'
+import { voteOnNote, fetchNotesList, fetchNoteById, fetchComments, postComment, markCommentHelpful as markHelpfulApi, setCommentBestAnswer as setBestAnswerApi, toggleBookmarkApi, fetchUserBookmarks, postReport, verifyNoteApi, updateNoteApi, deleteNoteApi, fetchReportsApi, fetchStatsApi } from '../services/noteService'
 
 const NotesContext = createContext(null)
 
@@ -35,8 +36,19 @@ function mergeBase() {
 }
 
 export function NotesProvider({ children }) {
+  const { user } = useAuth()
   const [notes, setNotes] = useState(() => mergeBase())
+  const [loading, setLoading] = useState(false)
+
   const [userVotes, setUserVotes] = useState(() => loadJson(K_VOTES, {}))
+
+  // Clear local votes when user logs out
+  useEffect(() => {
+    if (!user) {
+      setUserVotes({})
+      localStorage.removeItem(K_VOTES)
+    }
+  }, [user])
   const [bookmarks, setBookmarks] = useState(() => new Set(loadJson(K_BOOKMARKS, [])))
   const [extraComments, setExtraComments] = useState(() => loadJson(K_COMMENTS, {}))
   const [deletedIds, setDeletedIds] = useState(() => new Set(loadJson(K_DELETED, [])))
@@ -45,6 +57,77 @@ export function NotesProvider({ children }) {
   const [bookmarkBoost, setBookmarkBoost] = useState(() => loadJson(K_BBOOST, {}))
   const [collections, setCollections] = useState(() => loadJson(K_COLLECTIONS, []))
   const [reports, setReports] = useState(() => loadJson(K_REPORTS, []))
+  const [analytics, setAnalytics] = useState(null)
+
+  const loadReports = useCallback(async () => {
+    if (hasBackend) {
+      try {
+        const data = await fetchReportsApi()
+        setReports(data.map(r => ({
+          ...r,
+          id: r._id || r.id,
+          noteId: r.noteId?._id || r.noteId?.id || r.noteId,
+          noteTitle: r.noteId?.title || 'Unknown Note'
+        })))
+      } catch (error) {
+        console.error('Failed to fetch reports:', error)
+      }
+    }
+  }, [])
+
+  const loadAnalytics = useCallback(async () => {
+    if (hasBackend) {
+      try {
+        const data = await fetchStatsApi()
+        setAnalytics(data)
+      } catch (error) {
+        console.error('Failed to fetch analytics:', error)
+      }
+    }
+  }, [])
+
+  const loadAllNotes = useCallback(async (isSilent = false) => {
+    if (hasBackend) {
+      if (!isSilent) setLoading(true)
+      try {
+        const [notesData, bookmarkedData] = await Promise.all([
+          fetchNotesList(),
+          fetchUserBookmarks()
+        ])
+        // Standardize notes extraction
+        const backendNotes = (notesData?.notes || []).map(n => ({
+          ...n,
+          id: n._id || n.id
+        }))
+        
+        // Merge backend notes with local custom notes
+        const custom = loadJson(K_CUSTOM, [])
+        setNotes([...backendNotes, ...custom])
+
+        if (bookmarkedData) {
+          setBookmarks(new Set(bookmarkedData.map(b => b._id || b.id)))
+        }
+
+        // Fetch reports too
+        loadReports()
+      } catch (error) {
+        console.error('Failed to fetch notes from backend:', error)
+      } finally {
+        if (!isSilent) setLoading(false)
+      }
+    }
+  }, [loadReports])
+
+  useEffect(() => {
+    loadAllNotes()
+    
+    // Dynamic updates: Poll for changes every 15 seconds
+    const interval = setInterval(() => {
+      loadAllNotes(true) // Silent reload
+    }, 15000)
+    
+    return () => clearInterval(interval)
+  }, [loadAllNotes])
   const [downloadLog, setDownloadLog] = useState(() => loadJson(K_DOWNLOADS, []))
   const [recentViews, setRecentViews] = useState(() => loadJson(K_RECENT, []))
 
@@ -91,7 +174,10 @@ export function NotesProvider({ children }) {
     (n) => ({
       ...n,
       ...(patches[n.id] || {}),
-      views: (n.views ?? 0) + (viewExtra[n.id] || 0),
+      views: (n.stats?.views ?? n.views ?? 0) + (viewExtra[n.id] || 0),
+      downloads: (n.stats?.downloads ?? n.downloads ?? 0),
+      upvotes: (n.stats?.upvotes ?? n.upvotes ?? 0),
+      downvotes: (n.stats?.downvotes ?? n.downvotes ?? 0),
     }),
     [patches, viewExtra]
   )
@@ -108,9 +194,20 @@ export function NotesProvider({ children }) {
   )
 
   const vote = useCallback(async (noteId, type) => {
+    let result = null
     if (hasBackend) {
-      await voteOnNote(noteId, type === 'up' ? 'upvote' : 'downvote')
+      try {
+        result = await voteOnNote(noteId, type === 'up' ? 'upvote' : 'downvote')
+        if (result) {
+          setNotes((prev) =>
+            prev.map((n) => (n.id === noteId || n._id === noteId ? { ...n, stats: result.stats, userVote: result.userVote } : n))
+          )
+        }
+      } catch (error) {
+        console.error('Voting failed:', error)
+      }
     }
+    
     setUserVotes((prev) => {
       const cur = prev[noteId]
       const next = { ...prev }
@@ -122,16 +219,46 @@ export function NotesProvider({ children }) {
 
   const score = useCallback(
     (note) => {
-      const v = userVotes[note.id]
-      const up = note.upvotes + (v === 'up' ? 1 : 0)
-      const down = note.downvotes + (v === 'down' ? 1 : 0)
+      // Prioritize backend-provided userVote
+      let v = note.userVote;
+      if (v === 'upvote') v = 'up';
+      else if (v === 'downvote') v = 'down';
+      
+      // Fallback to local state if backend didn't provide it
+      if (v === undefined || v === null) {
+        v = userVotes[note.id] || userVotes[note._id]
+      }
+
+      // If we have backend stats, use them directly
+      if (note.stats) {
+        const up = note.stats.upvotes || 0
+        const down = note.stats.downvotes || 0
+        return { up, down, net: up - down, userVote: v ?? null }
+      }
+      // Fallback for mock/local notes
+      const up = (note.upvotes || 0) + (v === 'up' ? 1 : 0)
+      const down = (note.downvotes || 0) + (v === 'down' ? 1 : 0)
       return { up, down, net: up - down, userVote: v ?? null }
     },
     [userVotes]
   )
 
   const toggleBookmark = useCallback(
-    (noteId) => {
+    async (noteId) => {
+      if (hasBackend) {
+        try {
+          const newCount = await toggleBookmarkApi(noteId)
+          if (newCount !== null) {
+            setNotes((prev) =>
+              prev.map((n) =>
+                n.id === noteId || n._id === noteId ? { ...n, bookmarkCountBase: newCount } : n
+              )
+            )
+          }
+        } catch (error) {
+          console.error('Failed to toggle bookmark on backend:', error)
+        }
+      }
       setBookmarks((prev) => {
         const n = new Set(prev)
         const had = n.has(noteId)
@@ -195,42 +322,102 @@ export function NotesProvider({ children }) {
     return note
   }, [])
 
-  const editNote = useCallback((id, patch, isLocalId) => {
+  const editNote = useCallback(async (id, patch, isLocalId) => {
+    if (hasBackend && !isLocalId && !String(id).startsWith('local-')) {
+      try {
+        await updateNoteApi(id, patch)
+      } catch (error) {
+        console.error('Failed to update note on backend:', error)
+      }
+    }
     if (isLocalId || String(id).startsWith('local-')) {
       setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...patch } : n)))
     } else {
-      setPatches((p) => ({ ...p, [id]: { ...(p[id] || {}), ...patch } }))
+      setNotes((prev) => prev.map((n) => (n.id === id || n._id === id ? { ...n, ...patch } : n)))
     }
   }, [])
 
-  const deleteNote = useCallback((id) => {
-    if (String(id).startsWith('local-')) {
-      setNotes((prev) => prev.filter((n) => n.id !== id))
-    } else {
-      setDeletedIds((d) => new Set(d).add(id))
+  const deleteNote = useCallback(async (id) => {
+    if (hasBackend && !String(id).startsWith('local-')) {
+      try {
+        const success = await deleteNoteApi(id)
+        if (!success) return
+      } catch (error) {
+        console.error('Failed to delete note on backend:', error)
+        return
+      }
+    }
+    setNotes((prev) => prev.filter((n) => n.id !== id && n._id !== id))
+  }, [])
+
+  const verifyNote = useCallback(async (noteId) => {
+    if (hasBackend) {
+      try {
+        await verifyNoteApi(noteId)
+      } catch (error) {
+        console.error('Failed to verify note on backend:', error)
+      }
+    }
+    setNotes((prev) => prev.map((n) => (n.id === noteId || n._id === noteId ? { ...n, verifiedFaculty: true } : n)))
+  }, [])
+
+  const loadComments = useCallback(async (noteId) => {
+    if (hasBackend) {
+      try {
+        const data = await fetchComments(noteId)
+        setExtraComments((prev) => ({ ...prev, [noteId]: data }))
+      } catch (error) {
+        console.error('Failed to load comments:', error)
+      }
     }
   }, [])
 
-  const verifyNote = useCallback((id) => {
-    setPatches((p) => ({ ...p, [id]: { ...(p[id] || {}), verifiedFaculty: true } }))
-  }, [])
-
-  const recordView = useCallback((noteId) => {
+  const recordView = useCallback(async (noteId) => {
+    if (hasBackend) {
+      try {
+        await fetchNoteById(noteId) // This backend route increments view count
+        loadComments(noteId) // Also load comments when viewing
+      } catch (error) {
+        console.error('Failed to record view:', error)
+      }
+    }
     setViewExtra((v) => ({ ...v, [noteId]: (v[noteId] || 0) + 1 }))
     setRecentViews((r) => {
       const next = [noteId, ...r.filter((x) => x !== noteId)]
       return next.slice(0, 30)
     })
-  }, [])
+  }, [loadComments])
 
-  const bumpDownload = useCallback((noteId, userId) => {
+  const bumpDownload = useCallback(async (noteId, userId) => {
+    if (hasBackend) {
+      try {
+        await downloadNote(noteId)
+      } catch (error) {
+        console.error('Failed to bump download:', error)
+      }
+    }
     setNotes((prev) =>
-      prev.map((n) => (n.id === noteId ? { ...n, downloads: n.downloads + 1 } : n))
+      prev.map((n) => (n.id === noteId || n._id === noteId ? { ...n, downloads: (n.downloads || 0) + 1 } : n))
     )
     setDownloadLog((log) => [{ at: new Date().toISOString(), noteId, userId: userId || null }, ...log].slice(0, 500))
   }, [])
 
-  const addComment = useCallback((noteId, authorName, body, parentId = null, seedComments = []) => {
+  const addComment = useCallback(async (noteId, authorName, body, parentId = null, seedComments = []) => {
+    if (hasBackend) {
+      try {
+        const newComment = await postComment(noteId, body, parentId)
+        if (newComment) {
+          setExtraComments((prev) => {
+            const list = prev[noteId] || []
+            return { ...prev, [noteId]: [...list, { ...newComment, id: newComment._id || newComment.id }] }
+          })
+        }
+        return
+      } catch (error) {
+        console.error('Failed to add comment to backend:', error)
+      }
+    }
+
     const c = {
       id: `lc-${crypto.randomUUID?.() ?? Date.now()}`,
       authorName,
@@ -263,7 +450,14 @@ export function NotesProvider({ children }) {
     })
   }, [])
 
-  const markCommentHelpful = useCallback((noteId, commentId) => {
+  const markCommentHelpful = useCallback(async (noteId, commentId) => {
+    if (hasBackend) {
+      try {
+        await markHelpfulApi(commentId)
+      } catch (error) {
+        console.error('Failed to mark helpful on backend:', error)
+      }
+    }
     setExtraComments((prev) => {
       const list = prev[noteId] || []
       const bump = (arr) =>
@@ -276,7 +470,14 @@ export function NotesProvider({ children }) {
     })
   }, [])
 
-  const setBestAnswer = useCallback((noteId, commentId) => {
+  const setBestAnswer = useCallback(async (noteId, commentId) => {
+    if (hasBackend) {
+      try {
+        await setBestAnswerApi(commentId)
+      } catch (error) {
+        console.error('Failed to set best answer on backend:', error)
+      }
+    }
     setExtraComments((prev) => {
       const list = (prev[noteId] || []).map((x) => ({
         ...x,
@@ -308,7 +509,14 @@ export function NotesProvider({ children }) {
     [extraComments]
   )
 
-  const submitReport = useCallback((payload) => {
+  const submitReport = useCallback(async (payload) => {
+    if (hasBackend) {
+      try {
+        await postReport(payload.noteId, payload)
+      } catch (error) {
+        console.error('Failed to submit report to backend:', error)
+      }
+    }
     const row = {
       id: `rep-${crypto.randomUUID?.() ?? Date.now()}`,
       ...payload,
@@ -317,7 +525,7 @@ export function NotesProvider({ children }) {
     setReports((r) => [row, ...r])
     const noteId = payload.noteId
     setNotes((prev) =>
-      prev.map((n) => (n.id === noteId ? { ...n, reportCount: (n.reportCount || 0) + 1 } : n))
+      prev.map((n) => (n.id === noteId || n._id === noteId ? { ...n, reportCount: (n.reportCount || 0) + 1 } : n))
     )
   }, [])
 
@@ -361,7 +569,7 @@ export function NotesProvider({ children }) {
     [allNotes]
   )
 
-  const analytics = useMemo(() => {
+  const derivedAnalytics = useMemo(() => {
     // eslint-disable-next-line react-hooks/purity -- time window for "today/week" analytics
     const now = Date.now()
     const day = 86400000
@@ -439,6 +647,7 @@ export function NotesProvider({ children }) {
       editNote,
       deleteNote,
       verifyNote,
+      loadComments,
       addComment,
       markCommentHelpful,
       setBestAnswer,
@@ -451,9 +660,12 @@ export function NotesProvider({ children }) {
       addCollection,
       toggleNoteInCollection,
       reports,
+      loadReports,
+      analytics,
+      loadAnalytics,
+      derivedAnalytics,
       submitReport,
       checkDuplicateUpload,
-      analytics,
     }),
     [
       allNotes,
@@ -468,6 +680,7 @@ export function NotesProvider({ children }) {
       editNote,
       deleteNote,
       verifyNote,
+      loadComments,
       addComment,
       markCommentHelpful,
       setBestAnswer,
@@ -480,9 +693,12 @@ export function NotesProvider({ children }) {
       addCollection,
       toggleNoteInCollection,
       reports,
+      loadReports,
+      analytics,
+      loadAnalytics,
+      derivedAnalytics,
       submitReport,
       checkDuplicateUpload,
-      analytics,
     ]
   )
 

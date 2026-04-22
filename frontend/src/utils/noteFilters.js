@@ -46,7 +46,13 @@ export function filterAndSortNotes(notes, query, scoreFn) {
   if (source) list = list.filter((n) => n.source === source)
   if (verifiedOnly) list = list.filter((n) => n.verifiedFaculty)
   if (examOnly) list = list.filter((n) => n.bestForExams || n.examFocused || n.importantExam)
-  if (pyqOnly) list = list.filter((n) => n.pyqBased || ['pyq', 'mid_term', 'end_sem'].includes(n.noteType))
+  if (pyqOnly) {
+    list = list.filter((n) => {
+      const titleHit = n.title.toLowerCase().includes('pyq') || n.title.toLowerCase().includes('paper')
+      const tagHit = (n.tags || []).some(t => t.toLowerCase().includes('pyq') || t.toLowerCase().includes('paper'))
+      return n.pyqBased || ['pyq', 'mid_term', 'end_sem'].includes(n.noteType) || titleHit || tagHit
+    })
+  }
 
   if (q) {
     const t = q.trim().toLowerCase()

@@ -14,10 +14,16 @@ export async function fetchNotesList(query = {}) {
   if (hasBackend) {
     try {
       const { data } = await api.get('/notes', { params: query })
-      return data.success ? data.data : []
+      // Backend returns { success: true, data: notesArray }
+      // We wrap it in the expected pagination object for consistency
+      const notes = data.success ? data.data : []
+      return { 
+        notes, 
+        pagination: { page: 1, limit: notes.length, total: notes.length, pages: 1 } 
+      }
     } catch (error) {
       console.error('Error fetching notes:', error)
-      return []
+      return { notes: [], pagination: { page: 1, limit: 10, total: 0, pages: 1 } }
     }
   }
   await delay()
@@ -49,7 +55,10 @@ export async function fetchNoteById(id) {
   if (hasBackend) {
     try {
       const { data } = await api.get(`/notes/${id}`)
-      return data.success ? data.data : null
+      if (data.success && data.data) {
+        return { ...data.data, id: data.data._id || data.data.id }
+      }
+      return null
     } catch (error) {
       console.error('Error fetching note:', error)
       return null
@@ -93,6 +102,55 @@ export async function downloadNote(noteId) {
   }
   await delay(200)
   return { fileUrl: null }
+}
+
+/**
+ * @param {string} noteId
+ */
+export async function verifyNoteApi(noteId) {
+  if (hasBackend) {
+    try {
+      const { data } = await api.put(`/notes/${noteId}/verify`)
+      return data.success ? data.data : null
+    } catch (error) {
+      console.error('Error verifying note:', error)
+      throw error
+    }
+  }
+  return null
+}
+
+/**
+ * @param {string} noteId
+ * @param {object} patch
+ */
+export async function updateNoteApi(noteId, patch) {
+  if (hasBackend) {
+    try {
+      const { data } = await api.put(`/notes/${noteId}`, patch)
+      return data.success ? data.data : null
+    } catch (error) {
+      console.error('Error updating note:', error)
+      throw error
+    }
+  }
+  return null
+}
+
+/**
+ * @param {string} noteId
+ */
+export async function deleteNoteApi(noteId) {
+  if (hasBackend) {
+    try {
+      const { data } = await api.delete(`/notes/${noteId}`)
+      return data.success
+    } catch (error) {
+      console.error('Error deleting note:', error)
+      throw error
+    }
+  }
+  return false
 }
 
 /**
@@ -159,8 +217,13 @@ export async function deleteNote(noteId) {
 export async function searchNotes(search) {
   if (hasBackend) {
     try {
-      const { data } = await api.get('/notes/search', { params: { q: search } })
-      return data.success ? data.data : { notes: [], pagination: {} }
+      // The backend uses the base /notes route with a 'search' query param
+      const { data } = await api.get('/notes', { params: { search } })
+      const notes = data.success ? data.data : []
+      return { 
+        notes, 
+        pagination: { page: 1, limit: notes.length, total: notes.length, pages: 1 } 
+      }
     } catch (error) {
       console.error('Error searching notes:', error)
       return { notes: [], pagination: {} }
@@ -176,8 +239,10 @@ export async function searchNotes(search) {
 export async function getTrendingNotes() {
   if (hasBackend) {
     try {
-      const { data } = await api.get('/notes/trending')
-      return data.success ? data.data : []
+      // Since there's no specific /trending route in backend, 
+      // we'll use the main list which is already sorted by date or popularity
+      const { data } = await api.get('/notes')
+      return data.success ? data.data.slice(0, 10) : []
     } catch (error) {
       console.error('Error fetching trending notes:', error)
       return []
@@ -195,14 +260,206 @@ export async function postNoteUpload(formData) {
   if (hasBackend) {
     try {
       const { data } = await api.post('/notes', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 'Content-Type': 'multipart/form-data' }
       })
       return { success: data.success, data: data.data, error: null }
     } catch (error) {
       console.error('Error uploading note:', error)
-      return { success: false, data: null, error: error.response?.data?.message || 'Upload failed' }
+      return { success: false, data: null, error: error.response?.data?.message || 'Failed to upload note' }
     }
   }
-  await delay(400)
   return { success: true, data: null, error: null }
+}
+
+/**
+ * @param {string} noteId
+ */
+export async function fetchComments(noteId) {
+  if (hasBackend) {
+    try {
+      const { data } = await api.get(`/notes/${noteId}/comments`)
+      return data.success ? data.data : []
+    } catch (error) {
+      console.error('Error fetching comments:', error)
+      return []
+    }
+  }
+  return []
+}
+
+/**
+ * @param {string} noteId
+ * @param {string} body
+ * @param {string} [parentId]
+ */
+export async function postComment(noteId, body, parentId = null) {
+  if (hasBackend) {
+    try {
+      const { data } = await api.post(`/notes/${noteId}/comments`, { body, parentId })
+      return data.success ? data.data : null
+    } catch (error) {
+      console.error('Error posting comment:', error)
+      throw error
+    }
+  }
+  return null
+}
+
+/**
+ * @param {string} commentId
+ */
+export async function markCommentHelpful(commentId) {
+  if (hasBackend) {
+    try {
+      const { data } = await api.put(`/notes/comments/${commentId}/helpful`)
+      return data.success ? data.data : null
+    } catch (error) {
+      console.error('Error marking comment helpful:', error)
+      throw error
+    }
+  }
+  return null
+}
+
+/**
+ * @param {string} commentId
+ */
+export async function setCommentBestAnswer(commentId) {
+  if (hasBackend) {
+    try {
+      const { data } = await api.put(`/notes/comments/${commentId}/best`)
+      return data.success ? data.data : null
+    } catch (error) {
+      console.error('Error setting best answer:', error)
+      throw error
+    }
+  }
+  return null
+}
+
+/**
+ * @param {string} noteId
+ */
+export async function toggleBookmarkApi(noteId) {
+  if (hasBackend) {
+    try {
+      const { data } = await api.post(`/notes/${noteId}/bookmark`)
+      return data.success ? data.data : null
+    } catch (error) {
+      console.error('Error toggling bookmark:', error)
+      throw error
+    }
+  }
+  return null
+}
+
+/**
+ * Get user bookmarks
+ */
+export async function fetchUserBookmarks() {
+  if (hasBackend) {
+    try {
+      const { data } = await api.get('/notes/bookmarks')
+      return data.success ? data.data : []
+    } catch (error) {
+      console.error('Error fetching bookmarks:', error)
+      return []
+    }
+  }
+  return []
+}
+
+/**
+ * @param {string} noteId
+ * @param {string} reason
+ * @param {string} details
+ */
+export async function postReport(noteId, reason, details) {
+  if (hasBackend) {
+    try {
+      const { data } = await api.post(`/notes/${noteId}/report`, { reason, details })
+      return data.success ? data.data : null
+    } catch (error) {
+      console.error('Error reporting note:', error)
+      throw error
+    }
+  }
+  return null
+}
+
+/**
+ * Get all reports
+ */
+export async function fetchReportsApi() {
+  if (hasBackend) {
+    try {
+      const { data } = await api.get('/notes/reports')
+      return data.success ? data.data : []
+    } catch (error) {
+      console.error('Error fetching reports:', error)
+      throw error
+    }
+  }
+  return []
+}
+
+export async function fetchStatsApi() {
+  if (hasBackend) {
+    try {
+      const { data } = await api.get('/notes/stats')
+      return data.success ? data.data : null
+    } catch (error) {
+      console.error('Error fetching stats:', error)
+      throw error
+    }
+  }
+  return null
+}
+
+/**
+ * Reward user
+ */
+export async function rewardUserApi(kind) {
+  if (hasBackend) {
+    try {
+      const { data } = await api.post('/users/reward', { kind })
+      return data.success ? data.data : null
+    } catch (error) {
+      console.error('Error rewarding user:', error)
+      return null
+    }
+  }
+  return null
+}
+
+/**
+ * Get leaderboard
+ */
+export async function fetchLeaderboard() {
+  if (hasBackend) {
+    try {
+      const { data } = await api.get('/users/leaderboard')
+      return data.success ? data.data : []
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error)
+      return []
+    }
+  }
+  return []
+}
+
+/**
+ * Get user profile
+ */
+export async function fetchUserProfile() {
+  if (hasBackend) {
+    try {
+      const { data } = await api.get('/users/profile')
+      return data.success ? data.data : null
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+      return null
+    }
+  }
+  return null
 }

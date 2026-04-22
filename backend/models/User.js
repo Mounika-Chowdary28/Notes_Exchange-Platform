@@ -7,6 +7,8 @@ const userSchema = new mongoose.Schema({
   role: { type: String, default: 'student' },
   branch: { type: String, default: 'CSE' },
   semester: { type: Number, default: 1 },
+  points: { type: Number, default: 0 },
+  badges: [{ type: String }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

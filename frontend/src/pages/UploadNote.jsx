@@ -88,16 +88,37 @@ export function UploadNote() {
         const fd = new FormData()
         fd.append('file', file)
         fd.append('title', `${title.trim()}${queue.length > 1 ? ` (${i + 1}/${queue.length})` : ''}`)
-        await postNoteUpload(fd)
+        fd.append('subject', subject.trim())
+        fd.append('subjectCode', subjectCode.trim())
+        fd.append('semester', semester)
+        fd.append('branch', branch)
+        fd.append('description', description.trim())
+        fd.append('unit', unit)
+        fd.append('tags', JSON.stringify(tagList))
+        fd.append('noteType', noteType)
+        fd.append('difficulty', difficulty)
+        fd.append('examFocused', examFocused)
+        fd.append('importantExam', importantExam)
+        fd.append('labViva', labViva)
+        fd.append('handwritten', handwritten)
+        fd.append('ocrIndexed', ocrIndexed || fileType === 'image')
+        fd.append('fileType', fileType)
+        fd.append('pyqBased', ['pyq', 'mid_term', 'end_sem'].includes(noteType))
+        
+        const response = await postNoteUpload(fd)
+        const backendNote = response.data
+
         setProgress((p) => ({ ...p, [id]: 100 }))
         const created = addNote({
-          title: `${title.trim()}${queue.length > 1 ? ` (${i + 1}/${queue.length})` : ''}`,
-          subject: subject.trim(),
-          subjectCode: subjectCode.trim(),
-          semester,
-          branch,
+          ...backendNote,
+          id: backendNote?._id || backendNote?.id || `local-${Date.now()}`,
+          title: backendNote?.title || `${title.trim()}${queue.length > 1 ? ` (${i + 1}/${queue.length})` : ''}`,
+          subject: backendNote?.subject || subject.trim(),
+          subjectCode: backendNote?.subjectCode || subjectCode.trim(),
+          semester: backendNote?.semester || semester,
+          branch: backendNote?.branch || branch,
           unit,
-          description: description.trim(),
+          description: backendNote?.description || description.trim(),
           tags: tagList,
           noteType,
           difficulty,
@@ -107,7 +128,7 @@ export function UploadNote() {
           handwritten,
           ocrIndexed: ocrIndexed || fileType === 'image',
           fileType,
-          fileUrl,
+          fileUrl: backendNote?.fileUrl || fileUrl,
           userId: user?.id || 'anon',
           userName: user?.name || 'Student',
         })

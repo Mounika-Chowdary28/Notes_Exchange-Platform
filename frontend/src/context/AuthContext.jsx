@@ -59,9 +59,10 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password, options = {}) => {
     const { rememberMe = true } = options
     try {
-      const response = await api.post('/api/auth/login', { email, password })
+      const response = await api.post('/auth/login', { email, password })
       const { data } = response.data
-      const next = { token: data.token, user: data.user }
+      const user = { ...data.user, id: data.user._id || data.user.id }
+      const next = { token: data.token, user }
       persistSession(next, rememberMe)
       setAuthToken(next.token)
       setSession(next)
@@ -73,7 +74,7 @@ export function AuthProvider({ children }) {
 
   const signup = useCallback(async (name, email, password, profile = {}) => {
     try {
-      const response = await api.post('/api/auth/signup', {
+      const response = await api.post('/auth/signup', {
         name,
         email,
         password,
@@ -81,7 +82,8 @@ export function AuthProvider({ children }) {
         semester: profile.semester || 1
       })
       const { data } = response.data
-      const next = { token: data.token, user: data.user }
+      const user = { ...data.user, id: data.user._id || data.user.id }
+      const next = { token: data.token, user }
       persistSession(next, profile.rememberMe !== false)
       setAuthToken(next.token)
       setSession(next)
