@@ -30,17 +30,18 @@ export function NoteDetail() {
   const [reportOpen, setReportOpen] = useState(false)
   const [ocrQ, setOcrQ] = useState('')
   const note = id ? getNote(id) : null
+  const noteId = note ? String(note.id || note._id) : null
 
   useEffect(() => {
-    if (note?.id) recordView(note.id)
-  }, [note?.id, recordView])
+    if (noteId) recordView(noteId)
+  }, [noteId, recordView])
 
   const related = useMemo(() => {
-    if (!note) return []
+    if (!note || !noteId) return []
     return notes
-      .filter((n) => n.id !== note.id && (n.subjectCode === note.subjectCode || n.branch === note.branch))
+      .filter((n) => n && String(n.id || n._id) !== noteId && (n.subjectCode === note.subjectCode || n.branch === note.branch))
       .slice(0, 3)
-  }, [note, notes])
+  }, [note, noteId, notes])
 
   const ocrHits = useMemo(() => {
     if (!note || !ocrQ.trim()) return []
@@ -75,8 +76,7 @@ export function NoteDetail() {
 
   const s = score(note)
   const previewPdf = note.fileType === 'pdf' && canEmbed(note.fileUrl)
-  const isOwner = user?.id === note.uploadedBy?.id
-  const noteId = note.id || note._id
+  const isOwner = user?.id === note.uploadedBy?.id || user?._id === note.uploadedBy?._id || user?.id === note.uploadedBy || user?._id === note.uploadedBy
 
   const onDownload = () => {
     bumpDownload(noteId, user?.id)

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ThumbsUp } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useGamification } from '../context/GamificationContext'
 import { useNotes } from '../context/NotesContext'
@@ -19,6 +20,10 @@ function CommentBlock({ note, c, depth = 0 }) {
   const { reward } = useGamification()
   const [reply, setReply] = useState('')
   const [open, setOpen] = useState(false)
+  
+  if (!c || !note) return null
+  const noteId = String(note.id || note._id)
+  const commentId = String(c.id || c._id)
   const isAuthor = user?.id === note.uploadedBy?.id || user?.role === 'admin'
 
   const submitReply = (e) => {
@@ -29,7 +34,7 @@ function CommentBlock({ note, c, depth = 0 }) {
     }
     const body = reply.trim()
     if (!body) return
-    addComment(note.id, user?.name || 'Student', body, c.id, note.comments || [])
+    addComment(noteId, user?.name || 'Student', body, commentId, note.comments || [])
     setReply('')
     setOpen(false)
     reward('comment')
@@ -37,13 +42,13 @@ function CommentBlock({ note, c, depth = 0 }) {
   }
 
   const helpful = () => {
-    markCommentHelpful(note.id, c.id)
+    markCommentHelpful(noteId, commentId)
     reward('helpful')
     showToast('Marked helpful.', 'success')
   }
 
   const best = () => {
-    setBestAnswer(note.id, c.id)
+    setBestAnswer(noteId, commentId)
     showToast('Highlighted as best answer.', 'success')
   }
 
@@ -58,7 +63,7 @@ function CommentBlock({ note, c, depth = 0 }) {
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-black text-slate-900 text-sm">{c.authorName}</span>
+            <span className="font-black text-slate-900 text-sm">{c.authorName || 'Student'}</span>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
               {formatDate(c.createdAt)}
             </span>
@@ -111,7 +116,7 @@ function CommentBlock({ note, c, depth = 0 }) {
             rows={2}
             value={reply}
             onChange={(e) => setReply(e.target.value)}
-            placeholder={`Reply to ${c.authorName}...`}
+            placeholder={`Reply to ${c.authorName || 'Student'}...`}
             className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all shadow-sm"
           />
           <div className="mt-2 flex justify-end gap-2">
@@ -136,7 +141,7 @@ function CommentBlock({ note, c, depth = 0 }) {
       {nested.length > 0 && (
         <ul className="space-y-4">
           {nested.map((r) => (
-            <CommentBlock key={r.id} note={note} c={r} depth={depth + 1} />
+            <CommentBlock key={r.id || r._id} note={note} c={r} depth={depth + 1} />
           ))}
         </ul>
       )}
@@ -150,6 +155,9 @@ export function CommentThread({ note }) {
   const { showToast } = useToast()
   const { reward } = useGamification()
   const [text, setText] = useState('')
+  
+  if (!note) return null
+  const noteId = String(note.id || note._id)
   const list = commentsFor(note)
 
   const submit = (e) => {
@@ -160,7 +168,7 @@ export function CommentThread({ note }) {
     }
     const body = text.trim()
     if (!body) return
-    addComment(note.id, user?.name || 'Student', body, null)
+    addComment(noteId, user?.name || 'Student', body, null)
     setText('')
     reward('comment')
     showToast('Comment added.', 'success')

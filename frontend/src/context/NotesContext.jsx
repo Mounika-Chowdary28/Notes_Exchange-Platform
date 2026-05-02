@@ -94,22 +94,25 @@ export function NotesProvider({ children }) {
           fetchNotesList(),
           fetchUserBookmarks()
         ])
-        // Standardize notes extraction
-        const backendNotes = (notesData?.notes || []).map(n => ({
-          ...n,
-          id: n._id || n.id
-        }))
         
-        // Merge backend notes with local custom notes
-        const custom = loadJson(K_CUSTOM, [])
-        setNotes([...backendNotes, ...custom])
-
-        if (bookmarkedData) {
-          setBookmarks(new Set(bookmarkedData.map(b => b._id || b.id)))
+        // Only update if we actually got data back to prevent notes from disappearing on temporary fetch failure
+        if (notesData && Array.isArray(notesData.notes)) {
+          const backendNotes = notesData.notes.map(n => ({
+            ...n,
+            id: n._id || n.id
+          }))
+          const custom = loadJson(K_CUSTOM, [])
+          setNotes([...backendNotes, ...custom])
+        }
+        
+        if (Array.isArray(bookmarkedData)) {
+          setBookmarks(new Set(bookmarkedData.map(b => b.noteId || b._id || b.id || b)))
         }
 
-        // Fetch reports too
-        loadReports()
+        // Only load reports if it's the first non-silent load
+        if (!isSilent) {
+          loadReports()
+        }
       } catch (error) {
         console.error('Failed to fetch notes from backend:', error)
       } finally {
@@ -171,22 +174,33 @@ export function NotesProvider({ children }) {
   }, [notes])
 
   const resolveNote = useCallback(
-    (n) => ({
-      ...n,
-      ...(patches[n.id] || {}),
-      views: (n.stats?.views ?? n.views ?? 0) + (viewExtra[n.id] || 0),
-      downloads: (n.stats?.downloads ?? n.downloads ?? 0),
-      upvotes: (n.stats?.upvotes ?? n.upvotes ?? 0),
-      downvotes: (n.stats?.downvotes ?? n.downvotes ?? 0),
-    }),
+    (n) => {
+      if (!n) return null
+      const nid = String(n.id || n._id)
+      return {
+        ...n,
+        id: nid,
+        ...(patches[nid] || {}),
+        views: (n.stats?.views ?? n.views ?? 0) + (viewExtra[nid] || 0),
+        downloads: (n.stats?.downloads ?? n.downloads ?? 0),
+        upvotes: (n.stats?.upvotes ?? n.upvotes ?? 0),
+        downvotes: (n.stats?.downvotes ?? n.downvotes ?? 0),
+      }
+    },
     [patches, viewExtra]
   )
 
   const allNotes = useMemo(() => {
-    return notes.filter((n) => !deletedIds.has(n.id)).map(resolveNote)
+    return notes
+      .map(resolveNote)
+      .filter((n) => n && !deletedIds.has(String(n.id)))
   }, [notes, deletedIds, resolveNote])
 
-  const getNote = useCallback((id) => allNotes.find((n) => n.id === id), [allNotes])
+  const getNote = useCallback((id) => {
+    if (!id) return null
+    const sid = String(id)
+    return allNotes.find((n) => String(n.id) === sid)
+  }, [allNotes])
 
   const getBookmarkCount = useCallback(
     (note) => Math.max(0, (note.bookmarkCountBase ?? 0) + (bookmarkBoost[note.id] || 0)),
@@ -219,14 +233,16 @@ export function NotesProvider({ children }) {
 
   const score = useCallback(
     (note) => {
+      if (!note) return { up: 0, down: 0, net: 0, userVote: null }
+      const nid = String(note.id || note._id)
       // Prioritize backend-provided userVote
-      let v = note.userVote;
-      if (v === 'upvote') v = 'up';
-      else if (v === 'downvote') v = 'down';
-      
+      let v = note.userVote
+      if (v === 'upvote') v = 'up'
+      else if (v === 'downvote') v = 'down'
+
       // Fallback to local state if backend didn't provide it
       if (v === undefined || v === null) {
-        v = userVotes[note.id] || userVotes[note._id]
+        v = userVotes[nid]
       }
 
       // If we have backend stats, use them directly
@@ -362,10 +378,11 @@ export function NotesProvider({ children }) {
   }, [])
 
   const loadComments = useCallback(async (noteId) => {
+    const stringNoteId = String(noteId)
     if (hasBackend) {
       try {
-        const data = await fetchComments(noteId)
-        setExtraComments((prev) => ({ ...prev, [noteId]: data }))
+        const data = await fetchComments(stringNoteId)
+        setExtraComments((prev) => ({ ...prev, [stringNoteId]: data }))
       } catch (error) {
         console.error('Failed to load comments:', error)
       }
@@ -373,43 +390,46 @@ export function NotesProvider({ children }) {
   }, [])
 
   const recordView = useCallback(async (noteId) => {
+    const stringNoteId = String(noteId)
     if (hasBackend) {
       try {
-        await fetchNoteById(noteId) // This backend route increments view count
-        loadComments(noteId) // Also load comments when viewing
+        await fetchNoteById(stringNoteId) // This backend route increments view count
+        loadComments(stringNoteId) // Also load comments when viewing
       } catch (error) {
         console.error('Failed to record view:', error)
       }
     }
-    setViewExtra((v) => ({ ...v, [noteId]: (v[noteId] || 0) + 1 }))
+    setViewExtra((v) => ({ ...v, [stringNoteId]: (v[stringNoteId] || 0) + 1 }))
     setRecentViews((r) => {
-      const next = [noteId, ...r.filter((x) => x !== noteId)]
+      const next = [stringNoteId, ...r.filter((x) => String(x) !== stringNoteId)]
       return next.slice(0, 30)
     })
   }, [loadComments])
 
   const bumpDownload = useCallback(async (noteId, userId) => {
+    const stringNoteId = String(noteId)
     if (hasBackend) {
       try {
-        await downloadNote(noteId)
+        await downloadNote(stringNoteId)
       } catch (error) {
         console.error('Failed to bump download:', error)
       }
     }
     setNotes((prev) =>
-      prev.map((n) => (n.id === noteId || n._id === noteId ? { ...n, downloads: (n.downloads || 0) + 1 } : n))
+      prev.map((n) => (String(n.id) === stringNoteId || String(n._id) === stringNoteId ? { ...n, downloads: (n.downloads || 0) + 1 } : n))
     )
-    setDownloadLog((log) => [{ at: new Date().toISOString(), noteId, userId: userId || null }, ...log].slice(0, 500))
+    setDownloadLog((log) => [{ at: new Date().toISOString(), noteId: stringNoteId, userId: userId || null }, ...log].slice(0, 500))
   }, [])
 
   const addComment = useCallback(async (noteId, authorName, body, parentId = null, seedComments = []) => {
+    const stringNoteId = String(noteId)
     if (hasBackend) {
       try {
-        const newComment = await postComment(noteId, body, parentId)
+        const newComment = await postComment(stringNoteId, body, parentId)
         if (newComment) {
           setExtraComments((prev) => {
-            const list = prev[noteId] || []
-            return { ...prev, [noteId]: [...list, { ...newComment, id: newComment._id || newComment.id }] }
+            const list = prev[stringNoteId] || []
+            return { ...prev, [stringNoteId]: [...list, { ...newComment, id: newComment._id || newComment.id }] }
           })
         }
         return
@@ -427,73 +447,88 @@ export function NotesProvider({ children }) {
       helpful: 0,
       bestAnswer: false,
     }
+
     setExtraComments((prev) => {
-      const list = prev[noteId] || []
+      const list = prev[stringNoteId] || []
       if (!parentId) {
-        return { ...prev, [noteId]: [...list, c] }
+        return { ...prev, [stringNoteId]: [...list, c] }
       }
-      const inExtra = list.some((x) => x.id === parentId)
-      const inSeed = seedComments.some((x) => x.id === parentId)
+      
+      const stringParentId = String(parentId)
+      const inExtra = list.some((x) => x && String(x.id) === stringParentId)
+      const inSeed = (seedComments || []).some((x) => x && String(x.id) === stringParentId)
+      
       if (!inExtra && inSeed) {
-        const parent = seedComments.find((x) => x.id === parentId)
+        const parent = seedComments.find((x) => x && String(x.id) === stringParentId)
         const bridge = {
           ...parent,
           replies: [...(parent.replies || []), { ...c, id: `lr-${c.id}` }],
         }
-        return { ...prev, [noteId]: [...list, bridge] }
+        return { ...prev, [stringNoteId]: [...list, bridge] }
       }
+      
       const mapped = list.map((x) => {
-        if (x.id !== parentId) return x
+        if (!x || String(x.id) !== stringParentId) return x
         return { ...x, replies: [...(x.replies || []), { ...c, id: `lr-${c.id}` }] }
       })
-      return { ...prev, [noteId]: mapped }
+      return { ...prev, [stringNoteId]: mapped }
     })
   }, [])
 
   const markCommentHelpful = useCallback(async (noteId, commentId) => {
+    const stringNoteId = String(noteId)
+    const stringCommentId = String(commentId)
     if (hasBackend) {
       try {
-        await markHelpfulApi(commentId)
+        await markHelpfulApi(stringCommentId)
       } catch (error) {
         console.error('Failed to mark helpful on backend:', error)
       }
     }
     setExtraComments((prev) => {
-      const list = prev[noteId] || []
+      const list = prev[stringNoteId] || []
       const bump = (arr) =>
         arr.map((x) => {
-          if (x.id === commentId) return { ...x, helpful: (x.helpful || 0) + 1 }
+          if (!x) return x
+          if (String(x.id) === stringCommentId) return { ...x, helpful: (x.helpful || 0) + 1 }
           if (x.replies?.length) return { ...x, replies: bump(x.replies) }
           return x
         })
-      return { ...prev, [noteId]: bump(list) }
+      return { ...prev, [stringNoteId]: bump(list) }
     })
   }, [])
 
   const setBestAnswer = useCallback(async (noteId, commentId) => {
+    const stringNoteId = String(noteId)
+    const stringCommentId = String(commentId)
     if (hasBackend) {
       try {
-        await setBestAnswerApi(commentId)
+        await setBestAnswerApi(stringCommentId)
       } catch (error) {
         console.error('Failed to set best answer on backend:', error)
       }
     }
     setExtraComments((prev) => {
-      const list = (prev[noteId] || []).map((x) => ({
-        ...x,
-        bestAnswer: x.id === commentId,
-      }))
-      return { ...prev, [noteId]: list }
+      const list = (prev[stringNoteId] || []).map((x) => {
+        if (!x) return x
+        return {
+          ...x,
+          bestAnswer: String(x.id) === stringCommentId,
+        }
+      })
+      return { ...prev, [stringNoteId]: list }
     })
   }, [])
 
   const commentsFor = useCallback(
     (note) => {
+      if (!note) return []
       const base = (note.comments || []).map((c) => ({ ...c, replies: c.replies || [] }))
-      const extra = extraComments[note.id] || []
+      const extra = extraComments[String(note.id)] || []
       const out = [...base]
       extra.forEach((e) => {
-        const i = out.findIndex((b) => b.id === e.id)
+        if (!e) return
+        const i = out.findIndex((b) => b && String(b.id) === String(e.id))
         if (i >= 0) {
           out[i] = {
             ...out[i],
